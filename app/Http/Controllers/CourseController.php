@@ -58,4 +58,15 @@ class CourseController extends Controller
         $course -> delete();
         return redirect()->route('courses.index')->with('success', 'Curso eliminado.');
      }
+
+     public function enroll(Course $course) 
+     {
+        $user=auth()->user();
+        if(!$user->courses->contains($course->id)){
+            $user->courses()->attach($course->id);
+        }
+
+        return redirect()->back()->with('success','Te incscribiste correctamente al curso');
+     }
+
 }

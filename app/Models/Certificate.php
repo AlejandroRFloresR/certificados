@@ -8,7 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 class Certificate extends Model
 {
     use HasFactory;
-}
+    protected $fillable=['user_id', 'course_id', 'issued_date', 'certificate_code'];
+
     public function user()
 {
         return $this->belongsTo(User::class);
@@ -17,4 +18,6 @@ class Certificate extends Model
     public function course()
 {
          return $this->belongsTo(Course::class);
+}
+
 }
