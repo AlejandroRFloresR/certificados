@@ -19,5 +19,10 @@ class Course extends Model
         return $this->hasMany(Certificate::class);
     }
     
+    public function tutors()
+    {
+        return $this->belongsToMany(Tutor::class);
+    }
+    
     protected $fillable = ['title', 'description', 'start_date', 'end_date'];
 }

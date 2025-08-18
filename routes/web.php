@@ -6,6 +6,7 @@ use App\Http\Controllers\CourseController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\TutorController;
 use App\Models\Certificate;
 
 /*
@@ -20,8 +21,14 @@ use App\Models\Certificate;
 */
 
 Route::get('/', function () {
-    return view('welcome');
+    return view('auth.login');
 });
+    //Tutors
+    Route::get('/tutors/{tutor}/edit-courses', [TutorController::class, 'editCourses'])->name('tutors.editCourses');
+    Route::put('/tutors/{tutor}/update-courses', [TutorController::class, 'updateCourses'])->name('tutors.updateCourses');
+    Route::get('/tutors/create', [TutorController::class, 'create'])->name('tutors.create');
+    Route::post('tutors', [TutorController::class, 'store'])->name('tutors.store');
+    Route::get('/tutors', [TutorController::class, 'index'])->name('tutors.index');
 
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/courses/create', [CourseController::class, 'create'])->name('courses.create');
@@ -34,12 +41,14 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     Route::get('/admin/users', [AdminUserController::class, 'index'])->name('admin.users.index');
     Route::post('/admin/users/{user}/assign-role', [AdminUserController::class, 'assignRole'])->name('admin.users.assignRole');
+    Route::get('/admin/users/{user}/edit-password', [AdminUserController::class, 'editPassword'])->name('admin.users.editPassword');
+    Route::put('/admin/users/{user}/update-password', [AdminUserController::class, 'updatePassword'])->name('admin.users.updatePassword');
+    Route::delete('/admin/users/{user}', [AdminUserController::class, 'destroy'])->name('admin.users.destroy');
 
     Route::get('/admin/courses',[AdminController::class, 'courses'])->name('admin.courses');
     Route::get('/admin/courses',[AdminController::class, 'showForm'])->name('admin.courses');
     Route::get('/admin/courses/{course}/users',[AdminController::class, 'courseUsers'])->name('admin.course.users');
 
-    Route::post('/certificates/issue', [CertificateController::class, 'issue'])->name('certificates.issue');
 });
 
     Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
@@ -50,7 +59,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
         })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
-    Route::get('/courses/{course}/certificate',[CertificateController::class,'generate'])->name('courses.certificate');
+    Route::get('/courses/{course}/certificate/{user}',[CertificateController::class,'generate'])->name('courses.certificate');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

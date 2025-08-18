@@ -4,7 +4,12 @@
             {{ __('Listado de Cursos') }}
         </h2>
     </x-slot>
-
+    <div class="flex justify-end mb-4">
+        <a href="{{ route('courses.create') }}"
+           class="bg-blue-600 hover:bg-blue-700 text-black font-bold py-2 px-4 rounded">
+            Nuevo
+        </a>
+    </div>
     <div class="py-6 max-w-6xl mx-auto">
         @if (session('success'))
             <div class="mb-4 text-green-600 font-medium">
@@ -57,11 +62,6 @@
                                 @else
                                 <span class="text-sm text-gray-500">Ya inscrito</span>
                                 @endif
-                            </td>
-                            <td>
-                                    <a href="{{ route('courses.certificate', $course->id) }}"   class="inline-block mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
-                                        Descargar certificado
-                                    </a>
                             </td>
                             <td class="px-4 py-2 space-x-2">
                                 <a href="{{ route('admin.course.users', $course->id) }}"    class="inline-block mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">   

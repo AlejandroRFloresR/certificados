@@ -24,7 +24,7 @@ class CourseController extends Controller
 
         Course::create($request->all());
 
-        return redirect()->route('dashboard')->with('success','Curso creado correctamente');
+    return redirect()->route('courses.index')->with('success','Curso creado correctamente.');
     }
 
     public function index()
@@ -49,7 +49,7 @@ class CourseController extends Controller
         ]);
         $course = Course::findOrFail($id);
         $course -> update($request->all());
-        return redirect()->route('courses.index')->with('sucess','Curso actualizado correctamente.');
+        return redirect()->route('courses.index')->with('success','Curso actualizado correctamente.');
      }
 
      public function destroy($id)
@@ -66,7 +66,7 @@ class CourseController extends Controller
             $user->courses()->attach($course->id);
         }
 
-        return redirect()->back()->with('success','Te incscribiste correctamente al curso');
+        return redirect()->back()->with('success','Te inscribiste correctamente al curso');
      }
 
 }

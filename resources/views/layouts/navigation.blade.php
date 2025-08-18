@@ -1,4 +1,4 @@
-<nav x-data="{ open: false }" class="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
+<nav x-data="{ open: false }" class="bg-hospitalblue dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
     <!-- Primary Navigation Menu -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
@@ -6,7 +6,7 @@
                 <!-- Logo -->
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('dashboard') }}">
-                        <x-application-logo class="block h-9 w-auto fill-current text-gray-800 dark:text-gray-200" />
+                         <img src="{{ asset('storage/images/logoNav.png') }}" alt="Logo" style="height: 40px;">
                     </a>
                 </div>
 
@@ -18,19 +18,20 @@
                 </div>
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                     <x-nav-link :href="route('courses.index')" :active="request()->routeIs('courses.index')">
-                        {{ __('Listar Cursos') }}
+                        {{ __('Listado de Cursos') }}
                     </x-nav-link>
                 </div>
                 @if(auth()->user()->HasRole('admin'))
+                    
                     <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                        <x-nav-link :href="route('courses.create')" :active="request()->routeIs('courses.create')">
-                            {{__('Crear nuevo curso')}}
+                        <x-nav-link :href="route('tutors.index')" :active="request()->routeIs('tutors.index')">
+                            {{__('Tutores')}}
                         </x-nav-link>
                     </div>
-    
+
                     <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                         <x-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.index')">
-                            {{__('Administrar Usuarios')}}
+                            {{__('Usuarios')}}
                         </x-nav-link>
                     </div>
                 @endif
