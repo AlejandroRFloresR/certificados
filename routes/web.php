@@ -66,4 +66,15 @@ Route::middleware('auth')->group(function () {
     Route::post('courses/{course}/enroll}', [CourseController::class, 'enroll'])->name('courses.enroll');
 });
 
+Route::get('/verify/{code}', function ($code) {
+    $cert = \App\Models\Certificate::where('certificate_code', $code)->firstOrFail();
+    return response()->json([
+        'valid' => true,
+        'user_id' => $cert->user_id,
+        'course_id' => $cert->course_id,
+        'issued_date' => $cert->issued_date->format('Y-m-d'),
+    ]);
+});
+Route::get('/certificates/verify/{code}', [\App\Http\Controllers\CertificateController::class, 'verify'])->name('certificates.verify');
+
 require __DIR__.'/auth.php';
