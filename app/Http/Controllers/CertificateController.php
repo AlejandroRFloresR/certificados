@@ -69,28 +69,19 @@ class CertificateController extends Controller
         // 4) Snapshot
         $snap = $certificate->snapshot_data;
 
-         // 5) Logo absoluto (en public/)
-        $logoAbs = isset($snap['assets']['logo_rel_path'])
-            ? public_path($snap['assets']['logo_rel_path'])
-            : null;
-
-        // 5.1) LOGO como data-URI (INTENTA primero en storage/, luego en public/)
+        // 5) LOGO: buscar en storage/app/public/images y fallback a public/images (png/jpg/jpeg)
         $logoData = null;
-        $candidatosLogo = [
-            storage_path('app/public/images/logoCertificado.png'),                // <-- storage
-            isset($snap['assets']['logo_rel_path']) ? public_path($snap['assets']['logo_rel_path']) : null, // fallback public
-            public_path('images/logoCertificado.png'),                            // fallback directo
-        ];
-        foreach ($candidatosLogo as $p) {
-            if ($p && is_file($p)) {
-                $ext  = strtolower(pathinfo($p, PATHINFO_EXTENSION));
-                $mime = ($ext === 'jpg' || $ext === 'jpeg') ? 'image/jpeg'
-                      : ($ext === 'gif' ? 'image/gif' : 'image/png');
-                $logoData = 'data:' . $mime . ';base64,' . base64_encode(@file_get_contents($p));
-                break;
+        $logoStorage = storage_path('app/public/images/logoCertificado.png');
+        if (is_file($logoStorage)) {
+            // si en el futuro usas .jpg/.jpeg, ajusta el mime
+            $logoData = 'data:image/png;base64,' . base64_encode(@file_get_contents($logoStorage));
+        } else {
+            // fallback opcional: public/images/logoCertificado.png
+            $logoPublic = public_path('images/logoCertificado.png');
+            if (is_file($logoPublic)) {
+                $logoData = 'data:image/png;base64,' . base64_encode(@file_get_contents($logoPublic));
             }
         }
-
         // 6) Firmas → data-URI (desde storage/app/public/signatures)
         $tutorsForView = collect($snap['tutors'] ?? [])->map(function ($t) {
             $file = basename((string)$t['signature']);
@@ -117,6 +108,17 @@ class CertificateController extends Controller
         } else {
             $date = Carbon::parse($rawDate)->format('d/m/Y');
         }
+        // 7.1) Fecha larga en español: "01 de julio de 2025"
+        $dt = null;
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $rawDate)) {
+            $dt = Carbon::createFromFormat('Y-m-d', $rawDate);
+        } elseif (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $rawDate)) {
+            $dt = Carbon::createFromFormat('d/m/Y', $rawDate);
+        } else {
+            $dt = Carbon::parse($rawDate);
+        }
+        $dt->locale('es');
+        $dateLong = $dt->translatedFormat('d \de\ F \de\ Y'); 
 
         // 8) QR → data-URI (SVG)
         $verifyUrl = route('certificates.verify', $certificate->certificate_code);
@@ -143,12 +145,14 @@ class CertificateController extends Controller
         // 10) Datos a la vista
         $data = [
             'snap'           => $snap,
-            'logo'           => $logoAbs,
+            'logo'           => null,
+            'logo_data'      => $logoData,
             'tutors'         => $tutorsForView,
             'code'           => $certificate->certificate_code,
             'qr_data_uri'    => $qrHeaderDataUri,
             'watermark_data' => $watermarkData,   // <- watermark desde storage
             'date'           => $date,
+            'date_long'      => $dateLong,
         ];
 
         // 11) Render PDF

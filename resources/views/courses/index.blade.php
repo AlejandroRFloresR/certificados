@@ -38,8 +38,8 @@
                                 @if(auth()->user()->HasRole('admin'))
                                 <a href="{{ route('courses.edit', $course->id) }}"
                                    class="text-blue-600 hover:underline">Editar</a>
-                            </td>
-                            <td class="px-4 py-2 space-x-2">
+                            
+                            
                                 <form action="{{ route('courses.destroy', $course->id) }}"
                                       method="POST" class="inline">
                                     @csrf
@@ -49,9 +49,9 @@
                                         Eliminar
                                     </button>
                                 </form>
-                            </td>
+                            
                                 @endif
-                            <td class="px-4 py-2 space-x-2">   
+                               
                                  @if (!auth()->user()->courses->contains($course->id))
                                     <form method="POST" action="{{ route('courses.enroll', $course->id) }}" class="inline">
                                     @csrf
@@ -62,8 +62,8 @@
                                 @else
                                 <span class="text-sm text-gray-500">Ya inscrito</span>
                                 @endif
-                            </td>
-                            <td class="px-4 py-2 space-x-2">
+                            
+                            
                                 <a href="{{ route('admin.course.users', $course->id) }}"    class="inline-block mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">   
                                     Listado de Alumnos
                                 </a>

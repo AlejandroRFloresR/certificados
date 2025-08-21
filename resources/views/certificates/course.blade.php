@@ -10,10 +10,10 @@
     .watermark {
         position: fixed;
         top: 50%;
-        left: 50%;
+        left: 45%;
         transform: translate(-50%, -50%) scale(1.2);
         opacity: 1;
-        width: 75%;
+        width: 45%;
         height: auto;
         z-index: 1;
     }
@@ -21,22 +21,34 @@
     .page { position: relative; z-index: 2; }
 
     .header {
-        background-color: #003764;
-        color: #fff;
-        padding: 15px 20px;
-        display:flex;
-        justify-content:space-between;
-        align-items:center;
+    background-color: #003764;
+    color: #fff;
+    padding: 5px 20px;
+    border-radius: 1%;
+    position: relative;
+    min-height: 56px;
+    margin: 35px 60px;
     }
 
-    .brand {
-        display:flex;
-        align-items:center;
-        gap: 12px;          /* separa logo y QR */
+    /* ✅ forzar extremos con floats */
+    .header img.qr {
+        float: left;
+        height: 70px;
+        display: block;
     }
 
-    .brand img.logo { height: 46px; display:block; }
-    .brand img.qr   { height: 46px; display:block; } /* mismo alto que el logo */
+    .header img.logo {
+        float: right;
+        height: 70px;
+        display: block;
+    }
+
+    /* ✅ clearfix para que el header envuelva las imágenes flotadas */
+    .header::after {
+        content: "";
+        display: block;
+        clear: both;
+    }
     .header-title { font-size: 20px; margin: 0; }
     .container { padding: 40px; text-align: center; position: relative; }
     h1 { font-size: 28px; margin-bottom: 0; }
@@ -51,42 +63,32 @@
 </style>
 </head>
 <body>
-
-    {{-- Marca de agua (opcional) --}}
     @if(!empty($watermark_data))
         <img class="watermark" src="{{ $watermark_data }}" alt="Marca de agua">
     @endif
 
     <div class="page">
         <div class="header">
-            <h2 class="header-title">Hospital Universitario</h2>
-
-            <div class="brand">
-                {{-- LOGO (data-URI para máxima compatibilidad) --}}
+            <img class="qr" src="{{ $qr_data_uri }}" alt="QR de verificación">
                 @if(!empty($logo_data))
                     <img class="logo" src="{{ $logo_data }}" alt="Logo">
                 @endif
-
-                {{-- QR BLANCO sobre azul, al lado del logo --}}
-                <img class="qr" src="{{ $qr_data_uri }}" alt="QR de verificación">
-            </div>
+                
         </div>
-        {{-- DEBUG: largo del data-URI del logo --}}
-        {{ isset($logo_data) ? strlen($logo_data) : 0 }}
 
         <div class="container">
             <h1>Certificado de Finalización</h1>
             <p>El Hospital Universitario de la UNCUYO certifica que</p>
 
             <div class="nombre">
-                {{ $snap['student']['name'] }}
+                {{ mb_strtoupper($snap['student']['name']) }}
                 @if(!empty($snap['student']['dni'])), DNI {{ $snap['student']['dni'] }}@endif
             </div>
 
             <p class="detalle">
                 ha completado satisfactoriamente el curso <strong>{{ $snap['course']['title'] }}</strong>.
             </p>
-
+             <div class="fecha">Mendoza, {{ $date_long }}</div>
             @if(!empty($tutors))
                 <div class="firmas">
                     <div class="firmas-row">
@@ -104,8 +106,6 @@
                 </div>
             @endif
 
-            <div class="fecha">{{ $date }}</div>
-            <div class="codigo">Código de verificación: {{ $code }}</div>
         </div>
     </div>
 </body>
