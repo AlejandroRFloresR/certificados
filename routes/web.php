@@ -7,74 +7,94 @@ use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\TutorController;
-use App\Models\Certificate;
 
 /*
 |--------------------------------------------------------------------------
 | Web Routes
 |--------------------------------------------------------------------------
-|
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "web" middleware group. Make something great!
-|
 */
 
 Route::get('/', function () {
     return view('auth.login');
 });
-    //Tutors
-    Route::get('/tutors/{tutor}/edit-courses', [TutorController::class, 'editCourses'])->name('tutors.editCourses');
-    Route::put('/tutors/{tutor}/update-courses', [TutorController::class, 'updateCourses'])->name('tutors.updateCourses');
-    Route::get('/tutors/create', [TutorController::class, 'create'])->name('tutors.create');
-    Route::post('tutors', [TutorController::class, 'store'])->name('tutors.store');
-    Route::get('/tutors', [TutorController::class, 'index'])->name('tutors.index');
 
-Route::middleware(['auth', 'role:admin'])->group(function () {
-    Route::get('/courses/create', [CourseController::class, 'create'])->name('courses.create');
-    Route::post('/courses', [CourseController::class, 'store'])->name('courses.store');
-  //  Route::get('/admin-panel', [AdminController::class, 'index']);
-    
-    Route::get('/courses/{id}/edit', [CourseController::class, 'edit'])->name('courses.edit');
-    Route::put('/courses/{id}', [CourseController::class, 'update'])->name('courses.update');
-    Route::delete('/courses/{id}', [CourseController::class, 'destroy'])->name('courses.destroy');
+/**
+ * TUTORS
+ * (Tip: evaluá proteger estas rutas con auth/role si no deben ser públicas)
+ */
+Route::get('/tutors/{tutor}/edit-courses', [TutorController::class, 'editCourses'])->name('tutors.editCourses');
+Route::put('/tutors/{tutor}/update-courses', [TutorController::class, 'updateCourses'])->name('tutors.updateCourses');
+Route::get('/tutors/create', [TutorController::class, 'create'])->name('tutors.create');
+Route::post('/tutors', [TutorController::class, 'store'])->name('tutors.store');
+Route::get('/tutors', [TutorController::class, 'index'])->name('tutors.index');
 
-    Route::get('/admin/users', [AdminUserController::class, 'index'])->name('admin.users.index');
-    Route::post('/admin/users/{user}/assign-role', [AdminUserController::class, 'assignRole'])->name('admin.users.assignRole');
-    Route::get('/admin/users/{user}/edit-password', [AdminUserController::class, 'editPassword'])->name('admin.users.editPassword');
-    Route::put('/admin/users/{user}/update-password', [AdminUserController::class, 'updatePassword'])->name('admin.users.updatePassword');
-    Route::delete('/admin/users/{user}', [AdminUserController::class, 'destroy'])->name('admin.users.destroy');
+/**
+ * ADMIN (prefijo URL /admin y nombre admin.*)
+ */
+Route::middleware(['auth', 'role:admin'])
+    ->prefix('admin')
+    ->as('admin.')
+    ->group(function () {
 
-    Route::get('/admin/courses',[AdminController::class, 'courses'])->name('admin.courses');
-    Route::get('/admin/courses',[AdminController::class, 'showForm'])->name('admin.courses');
-    Route::get('/admin/courses/{course}/users',[AdminController::class, 'courseUsers'])->name('admin.course.users');
+        // Cursos (gestión admin con CourseController)
+        Route::get('/courses/create', [CourseController::class, 'create'])->name('courses.create');
+        Route::post('/courses', [CourseController::class, 'store'])->name('courses.store');
+        Route::get('/courses/{id}/edit', [CourseController::class, 'edit'])->name('courses.edit');
+        Route::put('/courses/{id}', [CourseController::class, 'update'])->name('courses.update');
+        Route::delete('/courses/{id}', [CourseController::class, 'destroy'])->name('courses.destroy');
 
-});
+        // Panel/AdminController (evitamos duplicar misma URL y name)
+        Route::get('/courses', [AdminController::class, 'courses'])->name('courses');
+        Route::get('/courses/form', [AdminController::class, 'showForm'])->name('courses.form');
+        Route::get('/courses/{course}/users', [AdminController::class, 'courseUsers'])->name('courses.users');
 
-    Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
-    
+        // Usuarios (panel admin)
+        Route::resource('users', AdminUserController::class)->except(['show']);
+        // Acciones extra coherentes con kebab-case
+        Route::post('users/{user}/assign-role', [AdminUserController::class, 'assignRole'])->name('users.assign-role');
+        Route::get('users/{user}/password', [AdminUserController::class, 'editPassword'])->name('users.edit-password');
+        Route::put('users/{user}/password', [AdminUserController::class, 'updatePassword'])->name('users.update-password');
+    });
 
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-        })->middleware(['auth', 'verified'])->name('dashboard');
+/**
+ * Cursos (público / general)
+ */
+Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
 
+/**
+ * Dashboard
+ */
+Route::get('/dashboard', function () {
+    return view('dashboard');
+})->middleware(['auth', 'verified'])->name('dashboard');
+
+/**
+ * Rutas autenticadas (usuarios logueados)
+ */
 Route::middleware('auth')->group(function () {
-    Route::get('/courses/{course}/certificate/{user}',[CertificateController::class,'generate'])->name('courses.certificate');
+    Route::get('/courses/{course}/certificate/{user}', [CertificateController::class, 'generate'])->name('courses.certificate');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-    Route::post('courses/{course}/enroll}', [CourseController::class, 'enroll'])->name('courses.enroll');
+
+    // FIX: se quitó la "}" extra en la URL
+    Route::post('courses/{course}/enroll', [CourseController::class, 'enroll'])->name('courses.enroll');
 });
 
+/**
+ * Verificación de certificados por código
+ */
 Route::get('/verify/{code}', function ($code) {
     $cert = \App\Models\Certificate::where('certificate_code', $code)->firstOrFail();
     return response()->json([
-        'valid' => true,
-        'user_id' => $cert->user_id,
-        'course_id' => $cert->course_id,
+        'valid'       => true,
+        'user_id'     => $cert->user_id,
+        'course_id'   => $cert->course_id,
         'issued_date' => $cert->issued_date->format('Y-m-d'),
     ]);
 });
-Route::get('/certificates/verify/{code}', [\App\Http\Controllers\CertificateController::class, 'verify'])->name('certificates.verify');
+Route::get('/certificates/verify/{code}', [CertificateController::class, 'verify'])->name('certificates.verify');
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
+

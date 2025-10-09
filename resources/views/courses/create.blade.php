@@ -5,9 +5,9 @@
         </h2>
     </x-slot>
 
-    <div class="py-12 max-w-4xl mx-auto">
-        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-            <form method="POST" action="{{ route('courses.store') }}">
+    <div class="py-12 max-w-xl mx-auto">
+        <div class="bg-hospitalblue shadow rounded-lg p-6">
+            <form method="POST" action="{{ route('admin.courses.store') }}">
                 @csrf
 
                 <div class="mb-4">
@@ -31,9 +31,9 @@
                 </div>
 
                 <div>
-                    <button type="submit" class="px-6 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 transition duration-200">
-                        Guardar curso
-                    </button>
+                    <x-primary-button class="">
+                     {{ __('Guardar curso') }}
+                     </x-primary-button>
                 </div>
             </form>
         </div>

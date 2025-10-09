@@ -10,43 +10,25 @@ class TutorController extends Controller
 {   
     public function index()
     {
-        $tutors= Tutor::with('courses')->get();
+        $tutors= Tutor::with('courses', 'user')->get();
     
         return view('tutors.index',compact('tutors'));
     }
 
     public function create()
-    { 
-    $courses= Course::all();
-     return view('tutors.create', compact('courses'));   
+   {
+    // En vez de crear un tutor suelto, llevamos al alta de Usuario con rol=tutor
+        return redirect()
+        ->route('admin.users.create', ['role' => 'tutor'])
+        ->with('info', 'Para crear un Tutor, primero creá un Usuario con rol tutor.');
     }
 
     public function store(Request $request)
     {
-        $request->validate([
-            'name'=> 'required|string|max:255',
-            'signature'=> 'required|image|max:2048',
-            'courses'=> 'nullable|array',
-            'courses.*'=> 'exists:courses,id'
-        ]);
-
-        //Guardar la Firma
-
-        $path= $request->file('signature')->store('signatures', 'public');
-
-        //Crear Tutor
-        $tutor=Tutor::create([
-            'name'=> $request->name,
-            'signature'=> $path,
-        ]);
-        //Asignar Cursos
-        if($request->has('courses'))
-        {
-            $tutor->courses()->sync($request->courses);
-        }
-
-        
-        return redirect()->route('tutors.index')->with('success', 'Tutor guardado con exito');
+    // Bloqueamos creación directa de tutores sueltos
+    return redirect()
+        ->route('admin.users.create', ['role' => 'tutor'])
+        ->with('info', 'Para crear un Tutor, primero creá un Usuario con rol tutor.');
     }
 
     public function updateCourses(Request $request, Tutor $tutor)

@@ -1,7 +1,7 @@
 <x-app-layout>
 <div class="max-w-7x1 mx-auto p-6 bg-green min-h-screen">
     <x-slot name="header">
-        <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">
+        <h2 class="text-xl font-semibold text-white">
             {{ __('Listado de Tutores') }}
         </h2>
     </x-slot>
@@ -17,7 +17,7 @@
             <tr class="bg-blue-100">
                 <th class="border px-4 py-2 ">Nombre</th>
                 <th class="border px-4 py-2">Firma</th>
-                <th class="border px-4   py-2 ">Cursos</th>
+                <th class="border px-4 py-2 ">Cursos</th>
                 <th class="border px-4 py-2">Acciones</th>
             </tr>
         </thead>

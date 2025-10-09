@@ -1,15 +1,17 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
+        <div class="flex justify-between">
+        <h2 class="font-semibold text-xl text-white leading-tight">
             {{ __('Listado de Cursos') }}
         </h2>
-    </x-slot>
-    <div class="flex justify-end mb-4">
-        <a href="{{ route('courses.create') }}"
-           class="bg-blue-600 hover:bg-blue-700 text-black font-bold py-2 px-4 rounded">
-            Nuevo
+        
+        <a href="{{ route('admin.courses.create') }}"
+           class=" font-medium py-1 px-3 inline-flex items-center rounded-md bg-white border border-white text-hospitalblue hover:bg-hospitalblue hover:text-white">
+            Crear Curso
         </a>
     </div>
+    </x-slot>
+    
     <div class="py-6 max-w-6xl mx-auto">
         @if (session('success'))
             <div class="mb-4 text-green-600 font-medium">
@@ -19,7 +21,7 @@
 
         <div class="overflow-x-auto bg-white dark:bg-gray-800 shadow rounded-lg">
             <table class="min-w-full text-sm">
-                <thead class="bg-gray-200 dark:bg-gray-700">
+                <thead class="bg-blue-100">
                     <tr>
                         <th class="px-4 py-2">Título</th>
                         <th class="px-4 py-2">Inicio</th>
@@ -27,7 +29,7 @@
                         <th class="px-4 py-2">Acciones</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody class="divide-y bg-white">
                     @foreach ($courses as $course)
                         @auth
                         <tr>
@@ -36,11 +38,11 @@
                             <td class="px-4 py-2">{{ $course->end_date }}</td>
                             <td class="px-4 py-2 space-x-2">
                                 @if(auth()->user()->HasRole('admin'))
-                                <a href="{{ route('courses.edit', $course->id) }}"
+                                <a href="{{ route('admin.courses.edit', $course->id) }}"
                                    class="text-blue-600 hover:underline">Editar</a>
                             
                             
-                                <form action="{{ route('courses.destroy', $course->id) }}"
+                                <form action="{{ route('admin.courses.destroy', $course->id) }}"
                                       method="POST" class="inline">
                                     @csrf
                                     @method('DELETE')
@@ -53,7 +55,7 @@
                                 @endif
                                
                                  @if (!auth()->user()->courses->contains($course->id))
-                                    <form method="POST" action="{{ route('courses.enroll', $course->id) }}" class="inline">
+                                    <form method="POST" action="{{ route('admin.courses.enroll', $course->id) }}" class="inline">
                                     @csrf
                                         <button type="submit" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700">
                                             Inscribirme
@@ -64,7 +66,7 @@
                                 @endif
                             
                             
-                                <a href="{{ route('admin.course.users', $course->id) }}"    class="inline-block mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">   
+                                <a href="{{ route('admin.courses.users', $course->id) }}"    class="inline-block mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">   
                                     Listado de Alumnos
                                 </a>
 

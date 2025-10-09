@@ -4,7 +4,39 @@
 <meta charset="UTF-8">
 <title>Certificado</title>
 <style>
-    body { font-family: 'DejaVu Sans', sans-serif; margin:0; padding:0; background:#fff; color:#333; }
+    @php
+    $dir = storage_path('app/fonts/Verdana');
+    $R  = 'file://'.str_replace('\\','/',$dir.'/verdana.ttf');
+    $B  = 'file://'.str_replace('\\','/',$dir.'/verdanab.ttf');
+    $I  = 'file://'.str_replace('\\','/',$dir.'/verdanai.ttf');
+    $BI = 'file://'.str_replace('\\','/',$dir.'/verdanaz.ttf');
+    @endphp
+
+    @font-face {
+        font-family: 'verdana';
+        src: url('{{ $R }}') format('truetype');
+        font-weight: 400;
+        font-style: normal;
+    }
+    @font-face {
+        font-family: 'verdana';
+        src: url('{{ $B }}') format('truetype');
+        font-weight: 700;
+        font-style: normal;
+    }
+    @font-face {
+        font-family: 'verdana';
+        src: url('{{ $I }}') format('truetype');
+        font-weight: 400;
+        font-style: italic;
+    }
+    @font-face {
+        font-family: 'verdana';
+        src: url('{{ $BI }}') format('truetype');
+        font-weight: 700;
+        font-style: italic;
+    }
+    body { font-family: 'verdana', sans-serif; margin:0; padding:0; background:#fff; color:#333; }
 
     /* Marca de agua centrada, grande y tenue */
     .watermark {

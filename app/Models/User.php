@@ -24,6 +24,10 @@ class User extends Authenticatable
         return $this->hasMany(Certificate::class);
     }
 
+    public function tutor()
+    {
+        return $this->hasOne(\App\Models\Tutor::class);
+    }
     /**
      * The attributes that are mass assignable.
      *
