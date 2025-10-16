@@ -14,9 +14,7 @@ use App\Http\Controllers\TutorController;
 |--------------------------------------------------------------------------
 */
 
-Route::get('/', function () {
-    return view('auth.login');
-});
+Route::get('/', [CertificateController::class, 'lookup'])->middleware('throttle:10,1')->name('home');
 
 /**
  * TUTORS

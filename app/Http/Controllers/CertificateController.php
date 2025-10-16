@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class CertificateController extends Controller
 {
@@ -164,5 +165,27 @@ class CertificateController extends Controller
             ]);
 
         return $pdf->download("Certificado_{$user->name}_{$course->title}.pdf");
+    }
+        public function lookup(Request $request)
+    {
+        $dni = trim((string) $request->query('dni', ''));
+        $user = null;
+        $certs = collect();
+
+        if ($dni !== '') {
+            // Buscamos el usuario por DNI exacto (tu User ya lo tiene unique)
+            $user = \App\Models\User::where('dni', $dni)->first();
+
+            if ($user) {
+                // Traemos certificados + curso (ordenados por fecha de emisión desc si existe)
+                $certs = $user->certificates()
+                    ->with('course:id,title')
+                    ->orderByDesc('created_at') // si tu columna se llama distinto, ajustalo
+                    ->get(['id','user_id','course_id','certificate_code','issued_date']);
+            }
+        }
+
+        // Vista pública con el formulario y, si hay DNI, mostramos resultados
+        return view('home', compact('dni','user','certs'));
     }
 }
