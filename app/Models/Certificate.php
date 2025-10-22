@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Certificate extends Model
 {
+    public const TYPES = ['asistio', 'dicto', 'aprobado'];
     use HasFactory;
     protected $fillable=['user_id', 'course_id', 'issued_date', 'certificate_code', 'snapshot_data',];
 

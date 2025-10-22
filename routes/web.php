@@ -15,6 +15,8 @@ use App\Http\Controllers\TutorController;
 */
 
 Route::get('/', [CertificateController::class, 'lookup'])->middleware('throttle:10,1')->name('home');
+Route::get('/certificates/download/{code}', [CertificateController::class, 'downloadByCode'])
+    ->name('certificates.download');
 
 /**
  * TUTORS
@@ -70,7 +72,12 @@ Route::get('/dashboard', function () {
  * Rutas autenticadas (usuarios logueados)
  */
 Route::middleware('auth')->group(function () {
-    Route::get('/courses/{course}/certificate/{user}', [CertificateController::class, 'generate'])->name('courses.certificate');
+    Route::get('/courses/{course}/certificate/{user}/{type?}', [CertificateController::class,'generate'])
+    ->whereIn('type', ['asistio','dicto','aprobado'])
+    ->name('courses.certificate');
+    Route::post('/certificates/emit', [CertificateController::class, 'emit'])
+    ->middleware(['auth','role:admin'])
+    ->name('certificates.emit');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

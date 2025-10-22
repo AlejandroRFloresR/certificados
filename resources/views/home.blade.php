@@ -56,6 +56,7 @@
                                             <th class="px-4 py-2">Curso</th>
                                             <th class="px-4 py-2">Fecha emisión</th>
                                             <th class="px-4 py-2">Código</th>
+                                            <th class="px-4 py-2">Tipo</th>
                                             <th class="px-4 py-2">Acción</th>
                                         </tr>
                                     </thead>
@@ -71,12 +72,12 @@
                                                 <td class="px-4 py-2">{{ $c->course?->title ?? '—' }}</td>
                                                 <td class="px-4 py-2">{{ $date }}</td>
                                                 <td class="px-4 py-2 font-mono">{{ $masked }}</td>
+                                                <td class="px-4 py-2 capitalize">{{ $c->type ?? '—' }}></td>
                                                 <td class="px-4 py-2">
                                                     @if($code)
-                                                        {{-- Usa tu ruta existente de verificación por código --}}
-                                                        <a href="{{ route('certificates.verify', ['code' => $code]) }}"
-                                                           class="text-blue-600 hover:underline">
-                                                            Verificar
+                                                        <a href="{{ route('certificates.download', ['code' => $code]) }}"
+                                                        class="text-blue-600 hover:underline">
+                                                            Descargar
                                                         </a>
                                                     @else
                                                         <span class="text-gray-400">Sin código</span>

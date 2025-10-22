@@ -55,7 +55,7 @@
                                 @endif
                                
                                  @if (!auth()->user()->courses->contains($course->id))
-                                    <form method="POST" action="{{ route('admin.courses.enroll', $course->id) }}" class="inline">
+                                    <form method="POST" action="{{ route('courses.enroll', $course->id) }}" class="inline">
                                     @csrf
                                         <button type="submit" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700">
                                             Inscribirme

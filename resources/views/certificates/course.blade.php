@@ -108,8 +108,33 @@
                 
         </div>
 
+        
+        @php
+            // Tipo desde snapshot (fallback a 'aprobado' si faltara)
+            $type = strtolower($snap['type'] ?? 'aprobado');
+
+            // Título y texto dinámicos según tipo
+            switch ($type) {
+                case 'asistio':
+                    $titleText = 'Certificado de Asistencia';
+                    // “asistió” con tilde
+                    $bodyText  = 'asistió al curso';
+                    break;
+                case 'dicto':
+                    $titleText = 'Certificado de Docencia';
+                    // “dictó” con tilde
+                    $bodyText  = 'dictó el curso';
+                    break;
+                case 'aprobado':
+                default:
+                    $titleText = 'Certificado de Aprobación';
+                    $bodyText  = 'aprobó el curso';
+                    break;
+            }
+        @endphp
+
         <div class="container">
-            <h1>Certificado de Finalización</h1>
+            <h1>{{ $titleText }} </h1>
             <p>El Hospital Universitario de la UNCUYO certifica que</p>
 
             <div class="nombre">
@@ -118,8 +143,10 @@
             </div>
 
             <p class="detalle">
-                ha completado satisfactoriamente el curso <strong>{{ $snap['course']['title'] }}</strong>.
+                {{ $bodyText }}
+                <strong>{{ $snap['course']['title'] }}</strong>.
             </p>
+
              <div class="fecha">Mendoza, {{ $date_long }}</div>
             @if(!empty($tutors))
                 <div class="firmas">

@@ -10,80 +10,188 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class CertificateController extends Controller
 {
-    public function generate(Course $course, User $user)
+    /**
+     * EMITIR certificado (solo crea si no existe; NO descarga).
+     * Pensado para panel admin.
+     */
+    public function emit(Request $request)
+    {
+        $data = $request->validate([
+            'user_id'   => ['required','exists:users,id'],
+            'course_id' => ['required','exists:courses,id'],
+            'type'      => ['required', Rule::in(\App\Models\Certificate::TYPES)],
+        ]);
+
+        $user   = User::findOrFail($data['user_id']);
+        $course = Course::findOrFail($data['course_id']);
+
+        // (opcional) Autorización: debe estar inscripto
+        if (!$user->courses()->where('course_id', $course->id)->exists()) {
+            return back()->with('error', 'El usuario no está inscripto en este curso.');
+        }
+
+        // Garantiza un único certificado por (user, course) y tipo coherente
+        $certificate = $this->firstOrCreateCertificate($user, $course, $data['type']);
+
+        return back()
+            ->with('success', 'Certificado emitido correctamente.')
+            ->with('cert_code', $certificate->certificate_code);
+    }
+
+    /**
+     * GENERAR/DESCARGAR el PDF.
+     * Si no existe, lo crea (primer emisión) y descarga.
+     * Acepta $type por URL o ?type=..., o reutiliza el del existente.
+     */
+    public function generate(Course $course, User $user, ?string $type = null)
     {
         // 1) Autorización
         if (!$user->courses()->where('course_id', $course->id)->exists()) {
             abort(403, 'No estás inscrito en este curso');
         }
 
-        // 2) Buscar certificado existente
-        $certificate = Certificate::where('user_id', $user->id)
+        // 2) Resolver tipo: parámetro, query o el del certificado existente
+        $existing = Certificate::where('user_id', $user->id)
             ->where('course_id', $course->id)
             ->first();
 
-        if (!$certificate) {
-            // 3) Primera emisión → snapshot inmutable
-            $course->load('tutors');
-
-            $tutores = $course->tutors->map(fn($t) => [
-                'name'      => $t->name,
-                'signature' => $t->signature, // archivo en storage/app/public/signatures
-            ])->values()->all();
-
-            $snapshot = [
-                'student' => [
-                    'name' => $user->name,
-                    'dni'  => $user->dni ?? null,
-                ],
-                'course' => [
-                    'title'       => $course->title,
-                    'description' => $course->description,
-                ],
-                'tutors'      => $tutores,
-                'issued_date' => now()->toDateString(), // YYYY-MM-DD
-                'assets'      => [
-                    'logo_rel_path' => 'images/logoCertificado.png',
-                    // opcional: si querés persistir la ruta de watermark en snapshot:
-                    // 'watermark_storage_rel' => 'images/watermark.jpeg',
-                ],
-                'qr' => [
-                    'size'   => 220,
-                    'margin' => 4,
-                    'color'  => [0, 0, 0],
-                    'bg'     => [255, 255, 255],
-                ],
-            ];
-
-            $certificate = Certificate::create([
-                'user_id'          => $user->id,
-                'course_id'        => $course->id,
-                'issued_date'      => now()->toDateString(),
-                'certificate_code' => Str::ulid(),
-                'snapshot_data'    => $snapshot,
-            ]);
+        if ($type === null) {
+            $type = request()->input('type') ?: ($existing->type ?? null);
+        }
+        if (!in_array($type, \App\Models\Certificate::TYPES, true)) {
+            abort(422, 'Tipo de certificado inválido. Use: asistio, dicto o aprobado.');
         }
 
-        // 4) Snapshot
+        // 3) Crear o devolver el existente (y validar coherencia de tipo)
+        $certificate = $this->firstOrCreateCertificate($user, $course, $type);
+
+        // 4) Render y descarga
+        return $this->renderPdf($certificate);
+    }
+
+    /**
+     * DESCARGAR por código (no emite, solo busca y baja).
+     */
+    public function downloadByCode(string $code)
+    {
+        $cert = Certificate::with(['user','course'])
+            ->where('certificate_code', $code)
+            ->firstOrFail();
+
+        return $this->renderPdf($cert);
+    }
+
+    /**
+     * HOME con búsqueda por DNI (sin cambios funcionales)
+     */
+    public function lookup(Request $request)
+    {
+        $dni = trim((string) $request->query('dni', ''));
+        $user = null;
+        $certs = collect();
+
+        if ($dni !== '') {
+            $user = User::where('dni', $dni)->first();
+
+            if ($user) {
+                $certs = $user->certificates()
+                    ->with('course:id,title')
+                    ->orderByDesc('created_at')
+                    ->get(['id','user_id','course_id','certificate_code','issued_date','type']);
+            }
+        }
+
+        return view('home', compact('dni','user','certs'));
+    }
+
+    /* ===========================
+       Helpers privados (DRY)
+       =========================== */
+
+    /**
+     * Crea el certificado si no existe para (user, course).
+     * Si existe, valida coherencia de tipo y lo devuelve.
+     */
+    private function firstOrCreateCertificate(User $user, Course $course, string $type): Certificate
+    {
+        $existing = Certificate::where('user_id', $user->id)
+            ->where('course_id', $course->id)
+            ->first();
+
+        if ($existing) {
+            if (($existing->type ?? null) !== $type) {
+                abort(409, 'Ya existe un certificado de otro tipo para este curso y usuario.');
+            }
+            return $existing;
+        }
+
+        // Snapshot inmutable de la emisión
+        $course->load('tutors');
+        $tutores = $course->tutors->map(fn($t) => [
+            'name'      => $t->name,
+            'signature' => $t->signature,
+        ])->values()->all();
+
+        $snapshot = [
+            'student' => [
+                'name' => $user->name,
+                'dni'  => $user->dni ?? null,
+            ],
+            'course' => [
+                'title'       => $course->title,
+                'description' => $course->description,
+            ],
+            'tutors'      => $tutores,
+            'issued_date' => now()->toDateString(),
+            'type'        => $type,
+            'assets'      => [
+                'logo_rel_path' => 'images/logoCertificado.png',
+            ],
+            'qr' => [
+                'size'   => 220,
+                'margin' => 4,
+                'color'  => [0, 0, 0],
+                'bg'     => [255, 255, 255],
+            ],
+        ];
+
+        return Certificate::create([
+            'user_id'          => $user->id,
+            'course_id'        => $course->id,
+            'issued_date'      => now()->toDateString(),
+            'certificate_code' => Str::ulid(),
+            'snapshot_data'    => $snapshot,
+            'type'             => $type,
+        ]);
+    }
+
+    /**
+     * Renderiza el PDF desde el snapshot del certificado y lo descarga.
+     */
+    private function renderPdf(Certificate $certificate)
+    {
+        // Asegurar relaciones
+        $certificate->loadMissing(['user','course']);
+
         $snap = $certificate->snapshot_data;
 
-        // 5) LOGO: buscar en storage/app/public/images y fallback a public/images (png/jpg/jpeg)
+        /* Logo (data URI) desde storage/public/images o fallback public/images */
         $logoData = null;
         $logoStorage = storage_path('app/public/images/logoCertificado.png');
         if (is_file($logoStorage)) {
-            // si en el futuro usas .jpg/.jpeg, ajusta el mime
             $logoData = 'data:image/png;base64,' . base64_encode(@file_get_contents($logoStorage));
         } else {
-            // fallback opcional: public/images/logoCertificado.png
             $logoPublic = public_path('images/logoCertificado.png');
             if (is_file($logoPublic)) {
                 $logoData = 'data:image/png;base64,' . base64_encode(@file_get_contents($logoPublic));
             }
         }
-        // 6) Firmas → data-URI (desde storage/app/public/signatures)
+
+        /* Firmas (data URI) desde storage/app/public/signatures */
         $tutorsForView = collect($snap['tutors'] ?? [])->map(function ($t) {
             $file = basename((string)$t['signature']);
             $abs  = storage_path('app/public/signatures/' . $file);
@@ -100,42 +208,35 @@ class CertificateController extends Controller
             ];
         })->all();
 
-        // 7) Fecha d/m/Y (robusto)
+        /* Fecha corta y larga */
         $rawDate = (string)($snap['issued_date'] ?? $certificate->issued_date);
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $rawDate)) {
             $date = Carbon::createFromFormat('Y-m-d', $rawDate)->format('d/m/Y');
+            $dt   = Carbon::createFromFormat('Y-m-d', $rawDate);
         } elseif (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $rawDate)) {
             $date = $rawDate;
+            $dt   = Carbon::createFromFormat('d/m/Y', $rawDate);
         } else {
             $date = Carbon::parse($rawDate)->format('d/m/Y');
-        }
-        // 7.1) Fecha larga en español: "01 de julio de 2025"
-        $dt = null;
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $rawDate)) {
-            $dt = Carbon::createFromFormat('Y-m-d', $rawDate);
-        } elseif (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $rawDate)) {
-            $dt = Carbon::createFromFormat('d/m/Y', $rawDate);
-        } else {
-            $dt = Carbon::parse($rawDate);
+            $dt   = Carbon::parse($rawDate);
         }
         $dt->locale('es');
-        $dateLong = $dt->translatedFormat('d \de\ F \de\ Y'); 
+        $dateLong = $dt->translatedFormat('d \de\ F \de\ Y');
 
-        // 8) QR → data-URI (SVG)
+        /* QR (SVG data URI) hacia la verificación */
         $verifyUrl = route('certificates.verify', $certificate->certificate_code);
         [$r,$g,$b] = [0,55,100]; // #003764
         $qrHeaderSvg = QrCode::format('svg')
-            ->size(80)                 // tamaño pequeño para el header
+            ->size(80)
             ->margin(2)
-            ->color(255,255,255)       // módulos BLANCOS
-            ->backgroundColor($r,$g,$b) // fondo azul igual al header
+            ->color(255,255,255)        // módulos blancos
+            ->backgroundColor($r,$g,$b) // fondo azul
             ->generate($verifyUrl);
         $qrHeaderDataUri = 'data:image/svg+xml;base64,' . base64_encode($qrHeaderSvg);
 
-        // 9) Marca de agua → data-URI DESDE storage/app/public/images/watermark.jpeg
-        //    (No usa public/, lee del storage real)
+        /* Marca de agua (desde storage/app/public/images/watermark.jpeg) */
         $wmRel = $snap['assets']['watermark_storage_rel'] ?? 'images/watermark.jpeg';
-        $wmAbs = storage_path('app/public/' . $wmRel); // <-- TU RUTA
+        $wmAbs = storage_path('app/public/' . $wmRel);
         $watermarkData = null;
         if (is_file($wmAbs)) {
             $ext  = strtolower(pathinfo($wmAbs, PATHINFO_EXTENSION));
@@ -143,7 +244,7 @@ class CertificateController extends Controller
             $watermarkData = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($wmAbs));
         }
 
-        // 10) Datos a la vista
+        /* Datos para la vista PDF */
         $data = [
             'snap'           => $snap,
             'logo'           => null,
@@ -151,12 +252,11 @@ class CertificateController extends Controller
             'tutors'         => $tutorsForView,
             'code'           => $certificate->certificate_code,
             'qr_data_uri'    => $qrHeaderDataUri,
-            'watermark_data' => $watermarkData,   // <- watermark desde storage
+            'watermark_data' => $watermarkData,
             'date'           => $date,
             'date_long'      => $dateLong,
         ];
 
-        // 11) Render PDF
         $pdf = Pdf::loadView('certificates.course', $data)
             ->setPaper('A4', 'landscape')
             ->setOptions([
@@ -164,28 +264,9 @@ class CertificateController extends Controller
                 'isRemoteEnabled'      => true,
             ]);
 
+        $user   = $certificate->user;
+        $course = $certificate->course;
+
         return $pdf->download("Certificado_{$user->name}_{$course->title}.pdf");
-    }
-        public function lookup(Request $request)
-    {
-        $dni = trim((string) $request->query('dni', ''));
-        $user = null;
-        $certs = collect();
-
-        if ($dni !== '') {
-            // Buscamos el usuario por DNI exacto (tu User ya lo tiene unique)
-            $user = \App\Models\User::where('dni', $dni)->first();
-
-            if ($user) {
-                // Traemos certificados + curso (ordenados por fecha de emisión desc si existe)
-                $certs = $user->certificates()
-                    ->with('course:id,title')
-                    ->orderByDesc('created_at') // si tu columna se llama distinto, ajustalo
-                    ->get(['id','user_id','course_id','certificate_code','issued_date']);
-            }
-        }
-
-        // Vista pública con el formulario y, si hay DNI, mostramos resultados
-        return view('home', compact('dni','user','certs'));
     }
 }
