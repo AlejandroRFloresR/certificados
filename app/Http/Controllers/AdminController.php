@@ -17,9 +17,18 @@ class AdminController extends Controller
 
     public function courseUsers(Course $course)
     {
-        $users=$course->users()->get();
+        // tutores del curso (para tu columna “Tutores”)
+        $course->load('tutors');
 
-        return view('admin.courses.users', compact('course', 'users'));
+        // usuarios del curso + SOLO sus certificados de ESTE curso
+        $users = $course->users()
+            ->with(['certificates' => function ($q) use ($course) {
+                $q->where('course_id', $course->id)
+                    ->select('id','user_id','course_id','certificate_code','type','snapshot_data'); // campos mínimos
+            }])
+            ->get();
+
+        return view('admin.courses.users', compact('course','users'));
     }
 
       public function showForm()

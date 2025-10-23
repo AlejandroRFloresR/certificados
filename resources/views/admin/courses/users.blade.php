@@ -54,13 +54,13 @@
                             <td class="px-4 py-2">{{ $user->pivot->created_at->format('d/m/Y') }}</td>
 
                             {{-- Tutores del curso (no del usuario) --}}
-                            <td class="px-4 py-2">
+                            <td class="px-4 py-2 text-left align-top">
                                 @if($course->tutors->isEmpty())
-                                    <span class="text-gray-500">—</span>
+                                    <span class="text-gray-500">Sin tutores asignados</span>
                                 @else
-                                    <ul class="text-left list-disc list-inside">
+                                   <ul class="pl-5" style="list-style: disc outside;">
                                         @foreach($course->tutors as $t)
-                                            <li>{{ $t->name }}</li>
+                                            <li style="line-height:1.25rem">{{ $t->name }}</li>
                                         @endforeach
                                     </ul>
                                 @endif
@@ -68,42 +68,60 @@
 
                             <td class="px-4 py-2">
                                 @php
-                                    // ¿ya existe certificado para este alumno en ESTE curso?
-                                    // Ideal: traer certificates eager-loaded en el controlador para evitar N+1
-                                    $existing = $user->certificates->firstWhere('course_id', $course->id)
-                                        ?? \App\Models\Certificate::where('user_id', $user->id)
-                                            ->where('course_id', $course->id)
-                                            ->first();
-                                @endphp
+                                    $existing = $user->certificates->first(); // ya viene filtrado por course_id
 
+                                    // 1) tomar de la columna 'type'
+                                    $type = $existing?->type;
+
+                                    // 2) fallback: si viene null, buscar en snapshot_data
+                                    if (!$type) {
+                                        $type = data_get($existing?->snapshot_data, 'type');
+                                    }
+                                    if (is_array($type)) { $type = reset($type) ?: null; } // por si viniera array
+
+                                    $badgeText = $type ? ucfirst($type) : '—';
+
+                                    $badges = [
+                                        'asistio'  => ['bg' => 'bg-blue-100',    'text' => 'text-blue-800',   'border' => 'border-blue-200'],
+                                        'dicto'    => ['bg' => 'bg-purple-100',  'text' => 'text-purple-800', 'border' => 'border-purple-200'],
+                                        'aprobado' => ['bg' => 'bg-emerald-100', 'text' => 'text-emerald-800','border' => 'border-emerald-200'],
+                                    ];
+                                    $style = $type && isset($badges[$type])
+                                        ? $badges[$type]
+                                        : ['bg'=>'bg-gray-100','text'=>'text-gray-800','border'=>'border-gray-200'];
+                                @endphp
                                 @if($existing)
-                                    {{-- Ya emitido → mostrar un solo botón "Descargar" (y opcional "Verificar") --}}
-                                    <div class="flex items-center justify-center gap-2">
+                                    <div class="flex items-center gap-2 flex-nowrap">
                                         <a href="{{ route('certificates.download', $existing->certificate_code) }}"
                                         class="inline-flex items-center rounded-md bg-blue-600 px-3 py-1 text-white hover:bg-blue-700">
                                             Descargar
                                         </a>
+
+                                        <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded border {{ $style['bg'].' '.$style['text'].' '.$style['border'] }}">
+                                            {{ $badgeText }}
+                                        </span>
                                     </div>
                                 @else
-                                    {{-- Aún no emitido → mostrar selector de tipo + botón "Emitir" (POST -> certificates.emit) --}}
-                                    <form method="POST" action="{{ route('certificates.emit') }}" class="flex items-center justify-center gap-2">
+                                    <form method="POST" action="{{ route('certificates.emit') }}"
+                                        class="inline-flex items-center gap-2 flex-wrap">
                                         @csrf
                                         <input type="hidden" name="user_id" value="{{ $user->id }}">
                                         <input type="hidden" name="course_id" value="{{ $course->id }}">
 
-                                        <select name="type" class="border rounded px-2 py-1" required>
+                                        <select name="type" required
+                                                class="border rounded px-2 py-1">
                                             <option value="asistio">Asistió</option>
                                             <option value="dicto">Dictó</option>
                                             <option value="aprobado">Aprobado</option>
                                         </select>
 
-                                        <button class="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700">
+                                        <button type="submit"
+                                                class="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700">
                                             Emitir
                                         </button>
                                     </form>
                                 @endif
                             </td>
-
                         </tr>
                     @endforeach
                 </tbody>

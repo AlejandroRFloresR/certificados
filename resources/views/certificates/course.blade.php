@@ -134,7 +134,7 @@
         @endphp
 
         <div class="container">
-            <h1>{{ $titleText }} </h1>
+            <h1>{{ $titleText }}</h1>
             <p>El Hospital Universitario de la UNCUYO certifica que</p>
 
             <div class="nombre">
