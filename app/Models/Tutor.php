@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Tutor extends Model
 {
     use HasFactory;
-    protected $fillable= ['name', 'signature'];
+    protected $fillable= ['user_id','name', 'signature'];
 
     public function courses()
     {
@@ -16,6 +16,6 @@ class Tutor extends Model
     }
     public function user()
     {
-        return $this->belongsTo(\App\Models\User::class);
+        return $this->belongsTo(User::class);
     }
 }

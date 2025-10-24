@@ -29,56 +29,44 @@ class AdminUserController extends Controller
     /** FORMULARIO: crear usuario */
     public function create()
     {
-        $roles  = Role::pluck('name','id'); // admin, tutor, user
-        $tutors = Tutor::orderBy('name')->get(['id','name']);
-        return view('admin.users.create', compact('roles','tutors'));
+        // traemos roles disponibles para el <select>
+        $roles = Role::all(['id','name']);
+        return view('admin.users.create', compact('roles'));
     }
 
-    /** POST: crear usuario + asignar rol (+ vincular Tutor si corresponde) */
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name'      => ['required','string','max:255'],
-            'email'     => ['required','email','max:255','unique:users,email'],
-            'dni'       => ['required','string','max:20','unique:users,dni'],
-            'telefono'  => ['required','string','max:20'],
-            'password'  => ['required','string','min:8','confirmed'],
-            'role'      => ['required','exists:roles,name'],
-            // Enlace con Tutor (opcional, solo si role=tutor)
-            'tutor_id'        => ['nullable','exists:tutors,id'],
-            'tutor_name'      => ['nullable','string','max:255'],
-            'tutor_signature' => ['nullable','string','max:255'],
+            'name'     => ['required','string','max:255'],
+            'email'    => ['required','string','lowercase','email','max:255','unique:users,email'],
+            'password' => ['required','string','min:8','confirmed'],
+            'dni'      => ['required','string','max:20','unique:users,dni'],
+            'telefono' => ['required','string','max:20'],
+            'role'     => ['required','exists:roles,name'], // <- seleccionás aquí admin/tutor/usuario
         ]);
 
-        DB::transaction(function () use ($data) {
-            $user = User::create([
-                'name'     => $data['name'],
-                'email'    => $data['email'],
-                'dni'      => $data['dni'],
-                'telefono' => $data['telefono'],
-                'password' => Hash::make($data['password']),
-            ]);
+        $user = User::create([
+            'name'     => $data['name'],
+            'email'    => $data['email'],
+            'password' => Hash::make($data['password']),
+            'dni'      => $data['dni'],
+            'telefono' => $data['telefono'],
+        ]);
 
-            // Solo un rol principal (ajustá si querés multi-rol)
-            $user->syncRoles([$data['role']]);
+        // Asigna el rol seleccionado
+        $user->syncRoles([$data['role']]);
 
-            // Si es Tutor, vinculamos
-            if ($user->hasRole('tutor')) {
-                if (!empty($data['tutor_id'])) {
-                    $tutor = Tutor::find($data['tutor_id']);
-                    // Si ya estaba asociado a otro user, lo reasignamos
-                    $tutor->user()->associate($user)->save();
-                } elseif (!empty($data['tutor_name']) || !empty($data['tutor_signature'])) {
-                    Tutor::create([
-                        'name'      => $data['tutor_name'] ?: $user->name,
-                        'signature' => $data['tutor_signature'] ?? null,
-                        'user_id'   => $user->id,
-                    ]);
-                }
-            }
-        });
+        // ⚠️ Si el rol es 'tutor', creamos (o confirmamos) su perfil Tutor
+        if ($user->hasRole('tutor')) {
+            Tutor::firstOrCreate(
+                ['user_id' => $user->id],
+                ['name' => $user->name] // la firma se sube después
+            );
+        }
 
-        return redirect()->route('admin.users.index')->with('success', 'Usuario creado correctamente.');
+        return redirect()
+            ->route('admin.users.index')
+            ->with('success', 'Usuario creado correctamente.');
     }
 
     /** FORMULARIO: editar usuario (datos + rol + vínculo tutor) */
@@ -153,27 +141,30 @@ class AdminUserController extends Controller
         return redirect()->route('admin.users.index')->with('success', 'Usuario actualizado correctamente.');
     }
 
-    /** Cambiar solo el rol desde index (quick action) */
+  
     public function assignRole(Request $request, User $user)
     {
         $request->validate([
-            'role' => ['required','exists:roles,name'],
+            'role'=>'required|exists:roles,name',
         ]);
 
-        DB::transaction(function () use ($request, $user) {
-            $oldWasTutor = $user->hasRole('tutor');
+        $user->syncRoles([$request->role]);
 
-            $user->syncRoles([$request->role]);
-
-            // Si ya no es tutor y antes lo era, desasociamos
-            if ($oldWasTutor && !$user->hasRole('tutor') && $user->tutor) {
-                $user->tutor()->update(['user_id' => null]);
+        if ($user->hasRole('tutor')) {
+            // crear Tutor si no existe
+            Tutor::firstOrCreate(
+                ['user_id' => $user->id],
+                ['name' => $user->name] // la firma se carga después
+            );
+        } else {
+            // si dejó de ser tutor, eliminar perfil Tutor (cascade limpia pivots)
+            if ($user->tutor) {
+                $user->tutor()->delete();
             }
-        });
+        }
 
-        return redirect()->back()->with('success', 'Rol actualizado correctamente.');
+        return back()->with('success', 'Rol actualizado correctamente.');
     }
-
     /** FORM contraseña (lo mantengo tal cual lo tenías) */
     public function editPassword(User $user)
     {
@@ -200,14 +191,11 @@ class AdminUserController extends Controller
             return back()->with('error', 'No puedes eliminar tu propio usuario.');
         }
 
-        // Si estaba vinculado como tutor, liberamos
-        if ($user->tutor) {
-            $user->tutor()->update(['user_id' => null]);
-        }
+        // “airbag”: por si el hook no corriera (CLI, tareas, etc)
+        optional($user->tutor)->delete();
 
         $user->delete();
 
-        // Corrijo la ruta de retorno a la del panel admin
         return redirect()->route('admin.users.index')->with('success', 'Usuario eliminado.');
     }
 }

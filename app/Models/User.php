@@ -26,8 +26,14 @@ class User extends Authenticatable
 
     public function tutor()
     {
-        return $this->hasOne(\App\Models\Tutor::class);
+        return $this->hasOne(Tutor::class);
     }
+    protected static function booted()
+{
+    static::deleting(function ($user) {
+        optional($user->tutor)->delete(); // elimina el registro en tutors
+    });
+}
     /**
      * The attributes that are mass assignable.
      *

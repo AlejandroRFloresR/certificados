@@ -1,16 +1,15 @@
 <x-app-layout>
-<div class="max-w-7x1 mx-auto p-6 bg-green min-h-screen">
     <x-slot name="header">
+        <div class = "flex items-center justify-between">
         <h2 class="text-xl font-semibold text-white">
             {{ __('Listado de Tutores') }}
         </h2>
+         <a href="{{ route('admin.users.create') }}"
+               class="inline-flex items-center rounded-md border border-white bg-white px-3 py-1 text-hospitalblue font-medium hover:bg-hospitalblue hover:text-white">
+                Crear tutor
+            </a>
+        </div>
     </x-slot>
-    <div class="flex justify-end mb-4">
-        <a href="{{ route('tutors.create') }}"
-           class="bg-blue-600 hover:bg-blue-700 text-black font-bold py-2 px-4 rounded">
-            Nuevo
-        </a>
-    </div>
 
     <table class="table-auto w-full border">
         <thead>

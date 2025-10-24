@@ -29,83 +29,66 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 ">Nombre</label>
+                    <label class="block text-sm font-medium text-gray-700">Nombre</label>
                     <input name="name" value="{{ old('name') }}" required
-                           class="mt-1 w-full rounded border-gray-300 ">
+                           class="mt-1 w-full rounded border-gray-300">
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 ">Email</label>
+                    <label class="block text-sm font-medium text-gray-700">Email</label>
                     <input type="email" name="email" value="{{ old('email') }}" required
-                           class="mt-1 w-full rounded border-gray-300 ">
+                           class="mt-1 w-full rounded border-gray-300">
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 ">DNI</label>
+                    <label class="block text-sm font-medium text-gray-700">DNI</label>
                     <input name="dni" value="{{ old('dni') }}" required
                            class="mt-1 w-full rounded border-gray-300">
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 ">Teléfono</label>
+                    <label class="block text-sm font-medium text-gray-700">Teléfono</label>
                     <input name="telefono" value="{{ old('telefono') }}" required
-                    class="mt-1 w-full rounded border-gray-300 ">
+                           class="mt-1 w-full rounded border-gray-300">
                 </div>
             </div>
 
             {{-- Rol --}}
             <div class="max-w-sm">
-                <label class="block text-sm font-medium text-gray-700 ">Rol</label>
-                <select name="role" id="role"
-                        class="mt-1 w-full rounded border-gray-300">
-                    @foreach($roles as $id => $name)
+                <label class="block text-sm font-medium text-gray-700">Rol</label>
+                <select name="role" id="role" class="mt-1 w-full rounded border-gray-300">
+                    @foreach($roles as $role)
+                        {{-- si en tu controlador enviaste $roles = Role::all(['name']); --}}
+                        <option value="{{ $role->name }}" @selected(old('role')===$role->name)>
+                            {{ ucfirst($role->name) }}
+                        </option>
+                    @endforeach
+
+                    {{-- Si en cambio pasás un arreglo plano: ['admin','tutor','user'], usá:
+                    @foreach($roles as $name)
                         <option value="{{ $name }}" @selected(old('role')===$name)>{{ ucfirst($name) }}</option>
                     @endforeach
+                    --}}
                 </select>
-                <p class="mt-1 text-xs text-gray-500">admin · tutor · user</p>
-            </div>
-
-            {{-- Bloque Tutor (visible si rol = tutor) --}}
-            <div id="tutor-fields" class="hidden rounded border border-gray-200 p-4">
-                <div class="font-semibold mb-2 text-gray-800">Vincular / crear Tutor</div>
-
-                <div class="max-w-sm">
-                    <label class="block text-sm font-medium text-gray-700">Tutor existente</label>
-                    <select name="tutor_id"
-                            class="mt-1 w-full rounded border-gray-300">
-                        <option value="">— Ninguno —</option>
-                        @foreach($tutors as $t)
-                            <option value="{{ $t->id }}" @selected(old('tutor_id')==$t->id)>{{ $t->name }}</option>
-                        @endforeach
-                    </select>
-                    <p class="mt-1 text-xs text-gray-500">Si elegís uno, se ignoran los campos de “crear nuevo”.</p>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 ">Nombre (Tutor)</label>
-                        <input name="tutor_name" value="{{ old('tutor_name') }}"
-                               class="mt-1 w-full rounded border-gray-300 ">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Firma (ruta/ID)</label>
-                        <input name="tutor_signature" value="{{ old('tutor_signature') }}"
-                               class="mt-1 w-full rounded border-gray-300 ">
-                    </div>
-                </div>
+                <p class="mt-1 text-xs text-gray-500">
+                    Admin · Tutor · User
+                </p>
+                <p class="mt-1 text-xs text-emerald-700">
+                    Si elegís <strong>tutor</strong>, al guardar se creará el perfil de Tutor y subira a la lista de tutores automaticamente.
+                </p>
             </div>
 
             {{-- Password --}}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 ">Contraseña</label>
+                    <label class="block text-sm font-medium text-gray-700">Contraseña</label>
                     <input type="password" name="password" required
                            class="mt-1 w-full rounded border-gray-300">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 ">Confirmar contraseña</label>
+                    <label class="block text-sm font-medium text-gray-700">Confirmar contraseña</label>
                     <input type="password" name="password_confirmation" required
-                           class="mt-1 w-full rounded border-gray-300 ">
+                           class="mt-1 w-full rounded border-gray-300">
                 </div>
             </div>
 
@@ -121,15 +104,4 @@
             </div>
         </form>
     </div>
-
-    <script>
-        const roleSel = document.getElementById('role');
-        const tutorBlock = document.getElementById('tutor-fields');
-        function toggleTutor(){
-            tutorBlock.classList.toggle('hidden', roleSel.value !== 'tutor');
-        }
-        roleSel.addEventListener('change', toggleTutor);
-        // estado inicial:
-        toggleTutor();
-    </script>
 </x-app-layout>

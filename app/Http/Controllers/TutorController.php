@@ -10,25 +10,11 @@ class TutorController extends Controller
 {   
     public function index()
     {
-        $tutors= Tutor::with('courses', 'user')->get();
+        $tutors= Tutor::whereHas('user')
+        ->with(['user:id,name,email','courses:id,title'])
+        ->get();
     
         return view('tutors.index',compact('tutors'));
-    }
-
-    public function create()
-   {
-    // En vez de crear un tutor suelto, llevamos al alta de Usuario con rol=tutor
-        return redirect()
-        ->route('admin.users.create', ['role' => 'tutor'])
-        ->with('info', 'Para crear un Tutor, primero creá un Usuario con rol tutor.');
-    }
-
-    public function store(Request $request)
-    {
-    // Bloqueamos creación directa de tutores sueltos
-    return redirect()
-        ->route('admin.users.create', ['role' => 'tutor'])
-        ->with('info', 'Para crear un Tutor, primero creá un Usuario con rol tutor.');
     }
 
     public function updateCourses(Request $request, Tutor $tutor)

@@ -72,7 +72,7 @@
                                                 <td class="px-4 py-2">{{ $c->course?->title ?? '—' }}</td>
                                                 <td class="px-4 py-2">{{ $date }}</td>
                                                 <td class="px-4 py-2 font-mono">{{ $masked }}</td>
-                                                <td class="px-4 py-2 capitalize">{{ $c->type ?? '—' }}</td>
+                                                <td class="px-4 py-2 uppercase">{{ $c->type ?? '—' }}</td>
                                                 <td class="px-4 py-2">
                                                     @if($code)
                                                         <a href="{{ route('certificates.download', ['code' => $code]) }}"
