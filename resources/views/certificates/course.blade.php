@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <title>Certificado</title>
-<style>
     @php
     $dir = storage_path('app/fonts/Verdana');
     $R  = 'file://'.str_replace('\\','/',$dir.'/verdana.ttf');
@@ -12,6 +11,7 @@
     $BI = 'file://'.str_replace('\\','/',$dir.'/verdanaz.ttf');
     @endphp
 
+<style>
     @font-face {
         font-family: 'verdana';
         src: url('{{ $R }}') format('truetype');
@@ -118,17 +118,17 @@
                 case 'asistio':
                     $titleText = 'Certificado de Asistencia';
                     // “asistió” con tilde
-                    $bodyText  = 'asistió al curso';
+                    $bodyText  = 'asistió ';
                     break;
                 case 'dicto':
                     $titleText = 'Certificado de Docencia';
                     // “dictó” con tilde
-                    $bodyText  = 'dictó el curso';
+                    $bodyText  = 'dictó ';
                     break;
                 case 'aprobado':
                 default:
                     $titleText = 'Certificado de Aprobación';
-                    $bodyText  = 'aprobó el curso';
+                    $bodyText  = 'aprobó';
                     break;
             }
         @endphp
@@ -142,10 +142,22 @@
                 @if(!empty($snap['student']['dni'])), DNI {{ $snap['student']['dni'] }}@endif
             </div>
 
-            <p class="detalle">
-                {{ $bodyText }}
-                <strong>{{ $snap['course']['title'] }}</strong>.
-            </p>
+                @php
+                    $hours = data_get($snap, 'course.hours');
+                @endphp
+
+
+                @php
+                    $descripcion = $snap['course']['description'] ?? '';
+                    $descripcion_wrapped = wordwrap($descripcion, 90, "<br>", true);
+                @endphp
+
+                <p class="detalle">
+                    {{$bodyText}}
+                    {!! $descripcion_wrapped !!}
+                    <br>
+                </p>
+
 
              <div class="fecha">Mendoza, {{ $date_long }}</div>
             @if(!empty($tutors))

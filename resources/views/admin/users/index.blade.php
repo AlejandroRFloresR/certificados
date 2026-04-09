@@ -4,10 +4,16 @@
             <h2 class="text-xl font-semibold text-white">
                 Usuarios
             </h2>
+            <div class="">
             <a href="{{ route('admin.users.create') }}"
                class="inline-flex items-center rounded-md border border-white bg-white px-3 py-1 text-hospitalblue font-medium hover:bg-hospitalblue hover:text-white">
                 Crear usuario
             </a>
+            <a href="{{ route('admin.users.import.create') }}"
+               class="inline-flex items-center rounded-md border border-white bg-white px-3 py-1 text-hospitalblue font-medium hover:bg-hospitalblue hover:text-white">
+                Importar usuarios
+            </a>
+            </div>
         </div>
     </x-slot>
 
@@ -19,61 +25,51 @@
             </div>
         @endif
         @if (session('error'))
-            <div class="mb-4 rounded border border-red-300 bg-red-50 px-4 py-2 text-red-700">
+            <div class="mb-4 rounded border border-red-300 bg-red-50 px-4 py-2 text-red-700"> 
                 {{ session('error') }}
             </div>
         @endif
 
-        <div class="overflow-x-auto rounded border border-gray-200 bg-white">
+        <div class="overflow-x-auto bg-white shadow rounded-lg">
             <table class="min-w-full text-sm">
-                <thead class="bg-gray-100">
-                    <tr class="border-b border-gray-200 dark:border-gray-700">
-                        <th class="px-4 py-2 text-left">ID</th>
-                        <th class="px-4 py-2 text-left">Nombre</th>
-                        <th class="px-4 py-2 text-left">Email</th>
-                        <th class="px-4 py-2 text-left">DNI</th>
-                        <th class="px-4 py-2 text-left">Teléfono</th>
-                        <th class="px-4 py-2 text-left">Rol</th>
-                        <th class="px-4 py-2 text-left">Acciones</th>
+                <thead>
+                    <tr class="bg-blue-100">
+                        <th class="px-4 py-2 text-center">ID</th>
+                        <th class="px-4 py-2 text-center">Nombre</th>
+                        <th class="px-4 py-2 text-center">Email</th>
+                        <th class="px-4 py-2 text-center">DNI</th>
+                        <th class="px-4 py-2 text-center">Teléfono</th>
+                        <th class="px-4 py-2 text-center">Rol</th>
+                        <th class="px-4 py-2 text-center">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($users as $user)
                         @php $currentRole = $user->roles->pluck('name')->first(); @endphp
-                        <tr class="border-b border-gray-200">
-                            <td class="px-4 py-2">{{ $user->id }}</td>
-                            <td class="px-4 py-2">{{ $user->name }}</td>
-                            <td class="px-4 py-2">{{ $user->email }}</td>
-                            <td class="px-4 py-2">{{ $user->dni }}</td>
-                            <td class="px-4 py-2">{{ $user->telefono }}</td>
-
-                            {{-- Cambio rápido de rol --}}
-                            <td class="px-4 py-2">
-                                <form method="POST" action="{{ route('admin.users.assign-role', $user) }}" id="role-form-{{ $user->id }}" class="flex items-center gap-2">
-                                    @csrf
-                                    <select name="role"
-                                            class="rounded border border-gray-300 px-2 py-1 "
-                                            onchange="document.getElementById('role-form-{{ $user->id }}').submit();">
-                                        @foreach($roles as $role)
-                                            <option value="{{ $role->name }}" @selected($currentRole === $role->name)>{{ ucfirst($role->name) }}</option>
-                                        @endforeach
-                                    </select>
-                                    <noscript>
-                                        <button type="submit" class="rounded border px-2 py-1">Actualizar</button>
-                                    </noscript>
-                                </form>
+                        <tr>
+                            <td class="border px-4 py-2 text-center">{{ $users->firstItem() + $loop->index }}</td>
+                            <td class="border px-4 py-2 text-center">{{ $user->name }}</td>
+                            <td class="border px-4 py-2 text-center">{{ $user->email }}</td>
+                            <td class="border px-4 py-2 text-center">{{ $user->dni }}</td>
+                            <td class="border px-4 py-2 text-center">{{ $user->telefono }}</td>
+                            <td class="border px-4 py-2 text-center">
+                                {{-- Columna Rol (solo lectura) --}}
+                                @php $currentRole = $user->roles->pluck('name')->first(); @endphp
+                                <span class="inline-block rounded-full bg-gray-100 text-gray-800 text-xs px-2 py-1 border border-gray-300">
+                                {{ $currentRole ? ucfirst($currentRole) : 'Sin rol' }}
+                                </span>
                             </td>
 
                             {{-- Acciones --}}
-                            <td class="px-4 py-2">
+                            <td class="border px-4 py-2 text-center">
                                 <div class="flex flex-wrap items-center gap-2">
                                     <a href="{{ route('admin.users.edit', $user) }}"
-                                       class="rounded border border-blue-600 px-2 py-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-gray-800">
+                                       class="rounded border border-blue-600 px-2 py-1 text-blue-600 hover:bg-blue-50">
                                         Editar
                                     </a>
 
                                     <a href="{{ route('admin.users.edit-password', $user) }}"
-                                       class="rounded border border-gray-400 px-2 py-1 text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800">
+                                       class="rounded border border-gray-400 px-2 py-1 text-gray-700 hover:bg-gray-50">
                                         Contraseña
                                     </a>
 

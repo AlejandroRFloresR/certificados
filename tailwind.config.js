@@ -20,7 +20,7 @@ export default {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
             },
             colors:{
-                hospitalblue:'#003764',
+                hospitalblue:'#003764','hospitalblue-dark': '#002244',
                 hospitalgray: '#59595B',
                 hospitalbrown: '#C7A36E',
             },

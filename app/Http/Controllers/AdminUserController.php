@@ -72,73 +72,46 @@ class AdminUserController extends Controller
     /** FORMULARIO: editar usuario (datos + rol + vínculo tutor) */
     public function edit(User $user)
     {
-        $roles       = Role::pluck('name','id');
-        $tutors      = Tutor::orderBy('name')->get(['id','name']);
-        $currentRole = $user->roles()->pluck('name')->first(); // primer rol asignado
+        $roles       = Role::all();
+        $user->load('roles','tutor');
 
-        return view('admin.users.edit', compact('user','roles','tutors','currentRole'));
+        return view('admin.users.edit', compact('user','roles'));
     }
 
-    /** PUT/PATCH: actualizar usuario + rol (+ vínculo tutor) */
     public function update(Request $request, User $user)
     {
         $data = $request->validate([
-            'name'      => ['required','string','max:255'],
-            'email'     => ['required','email','max:255', Rule::unique('users','email')->ignore($user->id)],
-            'dni'       => ['required','string','max:20', Rule::unique('users','dni')->ignore($user->id)],
-            'telefono'  => ['required','string','max:20'],
-            'password'  => ['nullable','string','min:8','confirmed'],
-            'role'      => ['required','exists:roles,name'],
-            'tutor_id'        => ['nullable','exists:tutors,id'],
-            'tutor_name'      => ['nullable','string','max:255'],
-            'tutor_signature' => ['nullable','string','max:255'],
+            'name'     => ['required','string','max:255'],
+            'email'    => ['required','email','max:255','unique:users,email,'.$user->id],
+            'dni'      => ['required','string','max:20','unique:users,dni,'.$user->id],
+            'telefono' => ['required','string','max:20'],
+            // role es opcional si se está editando a sí mismo (readonly)
+            'role'     => ['nullable','exists:roles,name'],
         ]);
 
-        DB::transaction(function () use ($user, $data) {
-            $user->fill([
-                'name'     => $data['name'],
-                'email'    => $data['email'],
-                'dni'      => $data['dni'],
-                'telefono' => $data['telefono'],
-            ]);
-            if (!empty($data['password'])) {
-                $user->password = Hash::make($data['password']);
+        // actualizar datos básicos
+        $user->update([
+            'name'     => $data['name'],
+            'email'    => $data['email'],
+            'dni'      => $data['dni'],
+            'telefono' => $data['telefono'],
+        ]);
+
+        // --- manejo de rol ---
+        if ($user->id !== auth()->id() && isset($data['role'])) {
+            // (Opcional) bloquear quitar el último admin
+            $currentRole = $user->roles->pluck('name')->first();
+            if ($currentRole === 'admin' && $data['role'] !== 'admin') {
+                $totalAdmins = \App\Models\User::role('admin')->count();
+                if ($totalAdmins <= 1) {
+                    return back()->withErrors(['role' => 'No podés quitar el último administrador.'])->withInput();
+                }
             }
-            $user->save();
 
             $user->syncRoles([$data['role']]);
+        }
 
-            // Gestionar vínculo Tutor según rol actual
-            if ($user->hasRole('tutor')) {
-                if (!empty($data['tutor_id'])) {
-                    // liberar vínculo previo si existía
-                    Tutor::where('user_id', $user->id)->update(['user_id' => null]);
-                    $tutor = Tutor::find($data['tutor_id']);
-                    $tutor->user()->associate($user)->save();
-                } else {
-                    $tutor = $user->tutor;
-                    if ($tutor) {
-                        $tutor->update([
-                            'name'      => $data['tutor_name'] ?: $tutor->name,
-                            'signature' => $data['tutor_signature'] ?? $tutor->signature,
-                        ]);
-                    } elseif (!empty($data['tutor_name']) || !empty($data['tutor_signature'])) {
-                        Tutor::create([
-                            'name'      => $data['tutor_name'] ?: $user->name,
-                            'signature' => $data['tutor_signature'] ?? null,
-                            'user_id'   => $user->id,
-                        ]);
-                    }
-                }
-            } else {
-                // Si dejó de ser tutor, limpiamos vínculo
-                if ($user->tutor) {
-                    $user->tutor()->update(['user_id' => null]);
-                }
-            }
-        });
-
-        return redirect()->route('admin.users.index')->with('success', 'Usuario actualizado correctamente.');
+        return redirect()->route('admin.users.index')->with('success', 'Usuario actualizado.');
     }
 
   

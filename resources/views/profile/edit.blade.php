@@ -18,7 +18,7 @@
                     @include('profile.partials.update-password-form')
                 </div>
             </div>
-
+            
         
         </div>
     </div>

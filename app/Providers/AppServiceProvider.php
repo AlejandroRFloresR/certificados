@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\URL;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -13,6 +14,11 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
 {
+    if (config('app.url')) {
+        URL::forceRootUrl(config('app.url'));   // fuerza host + subpath
+        // si usás HTTPS:
+        // URL::forceScheme('https');
+    }
     // Directorios y permisos de acceso de Dompdf
     config([
         // Dompdf tiene que poder "ver" storage/app y public

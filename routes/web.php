@@ -7,6 +7,8 @@ use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\TutorController;
+use App\Models\User;
+Use Illuminate\Support\Facades\Auth;
 
 /*
 |--------------------------------------------------------------------------
@@ -28,6 +30,7 @@ Route::get('/tutors/create', [TutorController::class, 'create'])->name('tutors.c
 Route::post('/tutors', [TutorController::class, 'store'])->name('tutors.store');
 Route::get('/tutors', [TutorController::class, 'index'])->name('tutors.index');
 
+
 /**
  * ADMIN (prefijo URL /admin y nombre admin.*)
  */
@@ -42,6 +45,21 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('/courses/{id}/edit', [CourseController::class, 'edit'])->name('courses.edit');
         Route::put('/courses/{id}', [CourseController::class, 'update'])->name('courses.update');
         Route::delete('/courses/{id}', [CourseController::class, 'destroy'])->name('courses.destroy');
+        Route::get('/courses/{course}/users/edit', [\App\Http\Controllers\AdminController::class, 'editCourseUsers'])
+            ->name('courses.users.edit');
+        Route::put('/courses/{course}/users', [\App\Http\Controllers\AdminController::class, 'updateCourseUsers'])
+            ->name('courses.users.update');
+        Route::get('/courses/{course}/users/export', [AdminController::class, 'exportCourseUsers'])
+            ->name('courses.users.export');
+        Route::get('/courses/{course}/tutors/edit', [\App\Http\Controllers\AdminController::class, 'editCourseTutors'])
+        ->name('courses.tutors.edit');
+        Route::put('/courses/{course}/tutors', [\App\Http\Controllers\AdminController::class, 'updateCourseTutors'])
+        ->name('courses.tutors.update');
+
+        Route::get('/tutors/{tutor}/signature', [TutorController::class, 'editSignature'])
+                ->name('tutors.signature.edit');
+        Route::put('/tutors/{tutor}/signature', [TutorController::class, 'updateSignature'])
+                ->name('tutors.signature.update');
 
         // Panel/AdminController (evitamos duplicar misma URL y name)
         Route::get('/courses', [AdminController::class, 'courses'])->name('courses');
@@ -50,12 +68,22 @@ Route::middleware(['auth', 'role:admin'])
 
         // Usuarios (panel admin)
         Route::resource('users', AdminUserController::class)->except(['show']);
+        Route::get('users/import', [\App\Http\Controllers\AdminUserImportController::class, 'create'])
+            ->name('users.import.create');
+        Route::post('users/import', [\App\Http\Controllers\AdminUserImportController::class, 'store'])
+            ->name('users.import.store');
         // Acciones extra coherentes con kebab-case
         Route::post('users/{user}/assign-role', [AdminUserController::class, 'assignRole'])->name('users.assign-role');
         Route::get('users/{user}/password', [AdminUserController::class, 'editPassword'])->name('users.edit-password');
         Route::put('users/{user}/password', [AdminUserController::class, 'updatePassword'])->name('users.update-password');
     });
-
+  
+    Route::middleware(['auth','role:tutor'])->group(function () {
+    Route::get('/my/signature', [TutorController::class, 'editMySignature'])
+        ->name('tutors.me.signature.edit');
+    Route::put('/my/signature', [TutorController::class, 'updateMySignature'])
+        ->name('tutors.me.signature.update');
+    });
 /**
  * Cursos (público / general)
  */
@@ -65,7 +93,30 @@ Route::get('/courses', [CourseController::class, 'index'])->name('courses.index'
  * Dashboard
  */
 Route::get('/dashboard', function () {
-    return view('dashboard');
+    /** @var \App\Models\User $user */
+    $user = Auth::user();
+
+    // 1) Cursos donde el usuario está inscripto (rol alumno)
+    $studentCourses = $user->courses()
+        ->orderBy('start_date', 'desc')
+        ->get();
+
+    // 2) Certificados del usuario, indexados por course_id
+    $certsByCourse = $user->certificates()
+        ->select('id','course_id','certificate_code','type','issued_date','snapshot_data')
+        ->get()
+        ->keyBy('course_id');  // => [course_id => Certificate]
+
+    // 3) Cursos donde es tutor (si tiene rol tutor y tutor asociado)
+    $tutorCourses = collect();
+    if ($user->hasRole('tutor') && $user->tutor) {
+        $tutorCourses = $user->tutor
+            ->courses()
+            ->orderBy('start_date', 'desc')
+            ->get();
+    }
+
+    return view('dashboard', compact('studentCourses','certsByCourse','tutorCourses'));
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 /**

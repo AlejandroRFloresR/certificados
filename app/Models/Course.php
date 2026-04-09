@@ -24,5 +24,8 @@ class Course extends Model
         return $this->belongsToMany(Tutor::class);
     }
     
-    protected $fillable = ['title', 'description', 'start_date', 'end_date'];
+    protected $fillable = ['title', 'description', 'start_date', 'end_date', 'hours'];
+    protected $casts =[
+        'hours' => 'integer',
+    ];
 }

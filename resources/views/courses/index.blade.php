@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex justify-between">
-        <h2 class="font-semibold text-xl text-white leading-tight">
+        <div class = "flex items-center justify-between">
+        <h2 class="text-xl font-semibold text-white">
             {{ __('Listado de Cursos') }}
         </h2>
         
@@ -13,45 +13,57 @@
     </x-slot>
     
     <div class="py-6 max-w-6xl mx-auto">
-        @if (session('success'))
-            <div class="mb-4 text-green-600 font-medium">
-                {{ session('success') }}
-            </div>
-        @endif
-
-        <div class="overflow-x-auto bg-white dark:bg-gray-800 shadow rounded-lg">
+        <div class="overflow-x-auto bg-white shadow rounded-lg">
             <table class="min-w-full text-sm">
                 <thead class="bg-blue-100">
                     <tr>
-                        <th class="px-4 py-2">Título</th>
-                        <th class="px-4 py-2">Inicio</th>
-                        <th class="px-4 py-2">Fin</th>
-                        <th class="px-4 py-2">Acciones</th>
+                        <th class="border px-4 py-2">Título</th>
+                        <th class="border px-4 py-2">Inicio</th>
+                        <th class="border px-4 py-2">Fin</th>
+                        <th class="border px-4 py-2">Tutores</th>
+                        <th class="border px-4 py-2">Acciones</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y bg-white">
                     @foreach ($courses as $course)
                         @auth
                         <tr>
-                            <td class="px-4 py-2">{{ $course->title }}</td>
-                            <td class="px-4 py-2">{{ $course->start_date }}</td>
-                            <td class="px-4 py-2">{{ $course->end_date }}</td>
-                            <td class="px-4 py-2 space-x-2">
+                            <td class="text-center border px-4 py-2">{{ $course->title }}</td>
+                            <td class="text-center border px-4 py-2">{{ $course->start_date }}</td>
+                            <td class="text-center border px-4 py-2">{{ $course->end_date }}</td>
+                            <td class="text-center border px-4 py-2">
+                                @if($course->tutors->isEmpty())
+                                    <span class="text-xs text-gray-400">Sin tutores asignados</span>
+                                @else
+                                    <ul class="list-disc list-inside text-xs text-gray-700">
+                                        @foreach($course->tutors as $tutor)
+                                            <li>
+                                                {{-- Si el tutor está ligado a un user, mostrás el nombre del user;
+                                                    si no, el name del tutor --}}
+                                                {{ optional($tutor->user)->name ?? $tutor->name }}
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                @endif
+                            </td>
+                            <td class="text-center border px-4 py-2 space-x-2">
                                 @if(auth()->user()->HasRole('admin'))
                                 <a href="{{ route('admin.courses.edit', $course->id) }}"
-                                   class="text-blue-600 hover:underline">Editar</a>
+                                   class="rounded border border-blue-600 px-2 py-1 text-blue-600 hover:bg-blue-50">Editar</a>
                             
                             
                                 <form action="{{ route('admin.courses.destroy', $course->id) }}"
                                       method="POST" class="inline">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="text-red-600 hover:underline"
+                                    <button type="submit" class="rounded bg-red-600 px-2 py-1 text-white hover:bg-red-700 disabled:opacity-60"
                                             onclick="return confirm('¿Estás seguro?')">
                                         Eliminar
                                     </button>
                                 </form>
-                            
+                                <a href="{{ route('admin.courses.users', $course->id) }}"    class="rounded border border-gray-400 px-2 py-1 text-gray-700 hover:bg-gray-50">   
+                                    Listado de Alumnos
+                                </a>
                                 @endif
                                
                                  @if (!auth()->user()->courses->contains($course->id))
@@ -62,21 +74,17 @@
                                         </button>
                                     </form>
                                 @else
-                                <span class="text-sm text-gray-500">Ya inscrito</span>
+                                <span class="inline-block rounded-full bg-gray-100 text-gray-800 text-xs px-2 py-1 border border-gray-300">
+                                Ya inscrito
+                                </span>
                                 @endif
-                            
-                            
-                                <a href="{{ route('admin.courses.users', $course->id) }}"    class="inline-block mt-2 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">   
-                                    Listado de Alumnos
-                                </a>
-
                             </td>
                         </tr>
                         @endauth
                     @endforeach
                     @if($courses->isEmpty())
                         <tr>
-                            <td colspan="4" class="px-4 py-4 text-center text-gray-500">
+                            <td colspan="5" class="px-4 py-4 text-center text-gray-500">
                                 No hay cursos cargados aún.
                             </td>
                         </tr>

@@ -90,22 +90,46 @@ class CertificateController extends Controller
      */
     public function lookup(Request $request)
     {
-        $dni = trim((string) $request->query('dni', ''));
+        $q = trim((string) $request->query('q', ''));
         $user = null;
         $certs = collect();
+        $certByCode = null;
 
-        if ($dni !== '') {
-            $user = User::where('dni', $dni)->first();
+        if ($q !== '') {
+            // ¿Parece un ULID? (26 chars base32 sin I, L, O, U)
+            $isUlid = (bool) preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/i', $q);
 
-            if ($user) {
-                $certs = $user->certificates()
-                    ->with('course:id,title')
-                    ->orderByDesc('created_at')
-                    ->get(['id','user_id','course_id','certificate_code','issued_date','type']);
+            if ($isUlid) {
+                // Buscar por CÓDIGO
+                $certByCode = \App\Models\Certificate::with(['user:id,name,dni','course:id,title'])
+                    ->where('certificate_code', $q)
+                    ->first();
+
+                if ($certByCode) {
+                    $user  = $certByCode->user;
+                    $certs = collect([$certByCode]);
+                }
+            } else {
+                // Buscar por DNI (tomamos solo dígitos)
+                $dni = preg_replace('/\D+/', '', $q);
+                if ($dni !== '') {
+                    $user = \App\Models\User::where('dni', $dni)->first();
+                    if ($user) {
+                        $certs = $user->certificates()
+                            ->with('course:id,title')
+                            ->orderByDesc('created_at')
+                            ->get(['id','user_id','course_id','certificate_code','issued_date','type','snapshot_data']);
+                    }
+                }
             }
         }
 
-        return view('home', compact('dni','user','certs'));
+        return view('home', [
+            'q'          => $q,
+            'user'       => $user,
+            'certs'      => $certs,
+            'certByCode' => $certByCode,
+        ]);
     }
 
     /* ===========================
@@ -128,6 +152,21 @@ class CertificateController extends Controller
             }
             return $existing;
         }
+        $courseDate = (string)($course->start_date);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $courseDate)){
+            $dateStart = Carbon::createFromFormat('Y-m-d', $courseDate)->format('d/m/Y');
+            $ds   = Carbon::createFromFormat('Y-m-d', $courseDate);
+        }
+        elseif (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $courseDate)) {
+            $dateStart = $courseDate;  
+            $ds   = Carbon::createFromFormat('d/m/Y', $courseDate);
+        }
+        else {
+            $dateStart = Carbon::parse($courseDate)->format('d/m/Y');
+            $ds   = Carbon::parse($courseDate);
+        }
+        $ds->locale('es');
+        $start_date = $ds->translatedFormat('d \de\ F \de\ Y');
 
         // Snapshot inmutable de la emisión
         $course->load('tutors');
@@ -144,6 +183,8 @@ class CertificateController extends Controller
             'course' => [
                 'title'       => $course->title,
                 'description' => $course->description,
+                'hours'       => $course->hours,
+                'start_date'  => $start_date,
             ],
             'tutors'      => $tutores,
             'issued_date' => now()->toDateString(),
@@ -224,7 +265,8 @@ class CertificateController extends Controller
         $dateLong = $dt->translatedFormat('d \de\ F \de\ Y');
 
         /* QR (SVG data URI) hacia la verificación */
-        $verifyUrl = route('certificates.verify', $certificate->certificate_code);
+        $path = route('home', ['q' => $certificate->certificate_code], false);
+        $verifyUrl = url($path);    
         [$r,$g,$b] = [0,55,100]; // #003764
         $qrHeaderSvg = QrCode::format('svg')
             ->size(80)

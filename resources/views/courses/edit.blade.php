@@ -1,65 +1,66 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">
-            {{ __('Editar Curso') }}
+        <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
+            {{ __('Editar curso') }}
         </h2>
     </x-slot>
 
-    <div class="py-6 max-w-4xl mx-auto">
+    <div class="py-6 max-w-xl mx-auto">
         @if ($errors->any())
-            <div class="mb-4 text-red-600 font-medium">
-                <ul class="list-disc pl-5">
+            <div class="mb-4 rounded border border-red-300 bg-red-50 px-4 py-3 text-red-700">
+                <div class="font-semibold mb-1">Revisá estos campos:</div>
+                <ul class="list-disc ml-6">
                     @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
+                        <li class="text-sm">{{ $error }}</li>
                     @endforeach
                 </ul>
             </div>
         @endif
 
-        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-            <form action="{{ route('courses.update', $course->id) }}" method="POST">
+        <div class="bg-hospitalblue shadow rounded-lg p-6">
+            <form method="POST" action="{{ route('admin.courses.update', $course->id) }}" class="space-y-6">
                 @csrf
                 @method('PUT')
 
+                {{-- Título --}}
                 <div class="mb-4">
-                    <label for="title" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Título del curso
-                    </label>
-                    <input type="text" name="title" id="title" value="{{ old('title', $course->title) }}"
-                        class="mt-1 block w-full border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    <label class="block text-sm font-medium text-white">Título del Curso</label>
+                    <input type="text" name="title"
+                           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                           value="{{ old('title', $course->title) }}" required>
                 </div>
 
+                {{-- Descripción --}}
                 <div class="mb-4">
-                    <label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Descripción
-                    </label>
-                    <textarea name="description" id="description" rows="4"
-                        class="mt-1 block w-full border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">{{ old('description', $course->description) }}</textarea>
+                    <label class="block text-sm font-medium text-white">Descripción</label>
+                    <textarea name="description"
+                              class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                              rows="4">{{ old('description', $course->description) }}</textarea>
                 </div>
 
-                <div class="mb-4">
-                    <label for="start_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Fecha de inicio
-                    </label>
-                    <input type="date" name="start_date" id="start_date" value="{{ old('start_date', $course->start_date) }}"
-                        class="mt-1 block w-full border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                {{-- Fechas: inicio y fin (50/50) --}}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-white">Fecha de inicio</label>
+                        <input type="date" name="start_date"
+                               value="{{ old('start_date', isset($course->start_date) ? \Carbon\Carbon::parse($course->start_date)->format('Y-m-d') : '') }}"
+                               class="mt-1 w-full rounded-md border-gray-300 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-white">Fecha de finalización</label>
+                        <input type="date" name="end_date"
+                               value="{{ old('end_date', isset($course->end_date) ? \Carbon\Carbon::parse($course->end_date)->format('Y-m-d') : '') }}"
+                               class="mt-1 w-full rounded-md border-gray-300 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
                 </div>
-
-                <div class="mb-4">
-                    <label for="end_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Fecha de finalización
-                    </label>
-                    <input type="date" name="end_date" id="end_date" value="{{ old('end_date', $course->end_date) }}"
-                        class="mt-1 block w-full border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                </div>
-
-                <div class="flex justify-end">
+                {{-- Botones --}}
+                <div class="flex items-center justify-end gap-2">
                     <a href="{{ route('courses.index') }}"
-                       class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 mr-2">
+                       class="inline-flex items-center rounded-md bg-white border px-4 py-2 text-sm text-hospitalblue font-medium hover:bg-gray-300">
                         Cancelar
                     </a>
                     <button type="submit"
-                            class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700">
+                            class="inline-flex items-center rounded-md border border-white bg-hospitalblue px-4 py-2 text-sm font-medium text-white hover:bg-hospitalblue-dark transition">
                         Actualizar Curso
                     </button>
                 </div>

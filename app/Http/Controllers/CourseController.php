@@ -15,14 +15,15 @@ class CourseController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
+       $validated = $request->validate([
+            'title'       => ['required','string','max:255'],
+            'description' => ['nullable','string'],
+            'start_date'  => ['required','date'],
+            'end_date'    => ['required','date','after_or_equal:start_date'],
+            'hours'       => ['nullable','integer','min:1','max:2000'],
         ]);
 
-        Course::create($request->all());
+        Course::create($validated);
 
     return redirect()->route('courses.index')->with('success','Curso creado correctamente.');
     }
@@ -41,14 +42,15 @@ class CourseController extends Controller
 
      public function update(Request $request, $id)
      {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
+        $validated = $request->validate([
+            'title'       => ['required','string','max:255'],
+            'description' => ['nullable','string'],
+            'start_date'  => ['required','date'],
+            'end_date'    => ['required','date','after_or_equal:start_date'],
+            'hours'       => ['nullable','integer','min:1','max:2000'],
         ]);
         $course = Course::findOrFail($id);
-        $course -> update($request->all());
+        $course -> update($validated);
         return redirect()->route('courses.index')->with('success','Curso actualizado correctamente.');
      }
 
