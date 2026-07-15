@@ -18,8 +18,10 @@
                 <thead class="bg-blue-100">
                     <tr>
                         <th class="border px-4 py-2">Título</th>
+                        <!--
                         <th class="border px-4 py-2">Inicio</th>
                         <th class="border px-4 py-2">Fin</th>
+                        -->
                         <th class="border px-4 py-2">Tutores</th>
                         <th class="border px-4 py-2">Acciones</th>
                     </tr>
@@ -29,8 +31,10 @@
                         @auth
                         <tr>
                             <td class="text-center border px-4 py-2">{{ $course->title }}</td>
+                            <!--
                             <td class="text-center border px-4 py-2">{{ $course->start_date }}</td>
                             <td class="text-center border px-4 py-2">{{ $course->end_date }}</td>
+                            -->
                             <td class="text-center border px-4 py-2">
                                 @if($course->tutors->isEmpty())
                                     <span class="text-xs text-gray-400">Sin tutores asignados</span>

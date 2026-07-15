@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">
+        <h2 class="text-xl font-semibold text-white">
             Mis Cursos
         </h2>
     </x-slot>
@@ -8,28 +8,25 @@
     <div class="py-6 max-w-6xl mx-auto space-y-8">
 
         {{-- BLOQUE 1: Cursos donde estoy inscripto como alumno --}}
-            @if($studentCourses->isEmpty())
-                <p class="text-sm text-gray-500">
-                    Todavía no estás inscripto en ningún curso.
-                </p>
-            @else
                 <div class="overflow-x-auto bg-white shadow rounded-lg">
                     <table class="min-w-full text-sm">
                         <thead class="bg-blue-100">
                             <tr>
-                                <th class="px-4 py-2 text-center text-xs font-medium text-gray-600">
+                                <th class="px-4 py-2 text-center text-xs font-medium ">
                                     Curso
                                 </th>
-                                <th class="px-4 py-2 text-center text-xs font-medium text-gray-600 ">
+                                <!--
+                                <th class="px-4 py-2 text-center text-xs font-medium ">
                                     Inicio
                                 </th>
-                                <th class="px-4 py-2 text-center text-xs font-medium text-gray-600">
+                                <th class="px-4 py-2 text-center text-xs font-medium ">
                                     Fin
                                 </th>
-                                <th class="px-4 py-2 text-center text-xs font-medium text-gray-600">
+                                -->
+                                <th class="px-4 py-2 text-center text-xs font-medium ">
                                     Certificado
                                 </th>
-                                <th class="px-4 py-2 text-center text-xs font-medium text-gray-600">
+                                <th class="px-4 py-2 text-center text-xs font-medium ">
                                     Acción
                                 </th>
                             </tr>
@@ -44,6 +41,7 @@
                                     <td class="text-center border px-6 py-4">
                                         {{ $course->title }}
                                     </td>
+                                    <!--
                                     <td class="text-center border px-6 py-4">
                                         @if($course->start_date)
                                             {{ \Carbon\Carbon::parse($course->start_date)->format('d/m/Y') }}
@@ -58,11 +56,11 @@
                                             —
                                         @endif
                                     </td>
-
+                                    -->
                                     {{-- Columna Certificado --}}
                                     <td class="text-center border px-6 py-4">
                                         @if($cert)
-                                            <div class="flex items-center gap-2">
+                                            <div class="flex items-center justify-center gap-2">
                                                 <span class="inline-flex items-center rounded-full bg-green-100 text-green-800 px-2 py-0.5 text-xs">
                                                     Emitido
                                                 </span>
@@ -91,6 +89,12 @@
                                     </td>
                                 </tr>
                             @endforeach
+                                @if($studentCourses->isEmpty())
+                                <tr>
+                                    <td colspan="5" class="px-4 py-4 text-center text-gray-500">
+                                        No estás inscripto en ningún curso.
+                                    </td>
+                                </tr>
                         </tbody>
                     </table>
                 </div>

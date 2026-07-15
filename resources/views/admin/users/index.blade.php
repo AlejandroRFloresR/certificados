@@ -62,7 +62,7 @@
 
                             {{-- Acciones --}}
                             <td class="border px-4 py-2 text-center">
-                                <div class="flex flex-wrap items-center gap-2">
+                                <div class="flex flex-wrap items-center justify-center gap-2">
                                     <a href="{{ route('admin.users.edit', $user) }}"
                                        class="rounded border border-blue-600 px-2 py-1 text-blue-600 hover:bg-blue-50">
                                         Editar

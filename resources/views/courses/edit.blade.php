@@ -1,8 +1,14 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
-            {{ __('Editar curso') }}
-        </h2>
+        <div class="flex items-center justify-between">
+            <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
+                {{ __('Editar curso') }}
+            </h2>
+            <a href="{{ route('courses.index') }}"
+                    class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-medium text-hospitalblue hover:bg-gray-300">
+                        Volver al listado
+            </a>
+        </div>  
     </x-slot>
 
     <div class="py-6 max-w-xl mx-auto">
@@ -39,6 +45,7 @@
                 </div>
 
                 {{-- Fechas: inicio y fin (50/50) --}}
+                <!--
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-white">Fecha de inicio</label>
@@ -53,6 +60,7 @@
                                class="mt-1 w-full rounded-md border-gray-300 focus:ring-blue-500 focus:border-blue-500">
                     </div>
                 </div>
+                -->
                 {{-- Botones --}}
                 <div class="flex items-center justify-end gap-2">
                     <a href="{{ route('courses.index') }}"

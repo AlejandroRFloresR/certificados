@@ -5,8 +5,8 @@
         Asignar tutores — {{ $course->title }}
       </h2>
       <a href="{{ route('admin.courses.users', $course) }}"
-         class="inline-flex items-center rounded-md border px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
-         Volver
+         class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-medium text-hospitalblue hover:bg-gray-300">
+         Volver al listado
       </a>
     </div>
   </x-slot>

@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="text-xl font-bold">Editar cursos para {{ $tutor->name }}</h2>
+        <h2 class="text-xl font-bold text-white">Editar cursos para {{ $tutor->name }}</h2>
     </x-slot>
 
     @if ($errors->any())

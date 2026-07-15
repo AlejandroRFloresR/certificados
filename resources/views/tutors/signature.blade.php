@@ -1,11 +1,11 @@
 <x-app-layout>
   <x-slot name="header">
     <div class="flex items-center justify-between">
-      <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">
+      <h2 class="text-xl font-semibold text-white">
         {{ $title ?? 'Firma del tutor' }}
       </h2>
       <a href="{{ route('tutors.index') }}"
-         class="inline-flex items-center rounded-md border px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+         class="inline-flex items-center rounded-md border border-white bg-white px-3 py-1 text-hospitalblue font-medium hover:bg-hospitalblue hover:text-white">
          Volver
       </a>
     </div>

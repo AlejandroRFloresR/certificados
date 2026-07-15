@@ -5,7 +5,7 @@
                 Editar usuario
             </h2>
             <a href="{{ route('admin.users.index') }}"
-               class="inline-flex items-center rounded-md bg-gray-200 px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700">
+               class="inline-flex items-center rounded-md border border-white bg-white px-3 py-1 text-hospitalblue font-medium hover:bg-hospitalblue hover:text-white">
                 Volver al listado
             </a>
         </div>

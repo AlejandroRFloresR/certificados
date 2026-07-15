@@ -34,10 +34,6 @@
                 {{ session('error') }}
             </div>
         @endif
-
-        @if ($users->isEmpty())
-            <p>No hay usuarios inscritos en este curso.</p>
-        @else
         <div class="overflow-x-auto bg-white shadow rounded-lg">
                 <table class="min-w-full text-sm">
                     <thead>
@@ -93,7 +89,7 @@
                                             : ['bg'=>'bg-gray-100','text'=>'text-gray-800','border'=>'border-gray-200'];
                                     @endphp
                                     @if($existing)
-                                        <div class="flex items-center gap-2 flex-nowrap">
+                                        <div class="flex items-center justify-center gap-2">
                                             <a href="{{ route('certificates.download', $existing->certificate_code) }}"
                                             class="inline-flex items-center rounded-md bg-blue-600 px-3 py-1 text-white hover:bg-blue-700">
                                                 Descargar
@@ -125,7 +121,14 @@
                                     @endif
                                 </td>
                             </tr>
-                        @endforeach
+                             @endforeach
+
+                             @if ($users->isEmpty())
+                                <tr>
+                                    <td colspan="7" class="px-4 py-6 text-center text-gray-500">
+                                        Aun no hay usuarios inscritos en este curso.
+                                    </td>
+                                </tr>
                     </tbody>
                 </table>
             @endif
