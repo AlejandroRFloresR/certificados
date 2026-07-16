@@ -26,8 +26,6 @@ Route::get('/certificates/download/{code}', [CertificateController::class, 'down
  */
 Route::get('/tutors/{tutor}/edit-courses', [TutorController::class, 'editCourses'])->name('tutors.editCourses');
 Route::put('/tutors/{tutor}/update-courses', [TutorController::class, 'updateCourses'])->name('tutors.updateCourses');
-Route::get('/tutors/create', [TutorController::class, 'create'])->name('tutors.create');
-Route::post('/tutors', [TutorController::class, 'store'])->name('tutors.store');
 Route::get('/tutors', [TutorController::class, 'index'])->name('tutors.index');
 
 
@@ -62,8 +60,6 @@ Route::middleware(['auth', 'role:admin'])
                 ->name('tutors.signature.update');
 
         // Panel/AdminController (evitamos duplicar misma URL y name)
-        Route::get('/courses', [AdminController::class, 'courses'])->name('courses');
-        Route::get('/courses/form', [AdminController::class, 'showForm'])->name('courses.form');
         Route::get('/courses/{course}/users', [AdminController::class, 'courseUsers'])->name('courses.users');
 
         // Usuarios (panel admin)
@@ -137,20 +133,6 @@ Route::middleware('auth')->group(function () {
     // FIX: se quitó la "}" extra en la URL
     Route::post('courses/{course}/enroll', [CourseController::class, 'enroll'])->name('courses.enroll');
 });
-
-/**
- * Verificación de certificados por código
- */
-Route::get('/verify/{code}', function ($code) {
-    $cert = \App\Models\Certificate::where('certificate_code', $code)->firstOrFail();
-    return response()->json([
-        'valid'       => true,
-        'user_id'     => $cert->user_id,
-        'course_id'   => $cert->course_id,
-        'issued_date' => $cert->issued_date->format('Y-m-d'),
-    ]);
-});
-Route::get('/certificates/verify/{code}', [CertificateController::class, 'verify'])->name('certificates.verify');
 
 require __DIR__ . '/auth.php';
 

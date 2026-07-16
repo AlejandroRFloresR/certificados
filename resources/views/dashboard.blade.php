@@ -15,14 +15,6 @@
                                 <th class="px-4 py-2 text-center text-xs font-medium ">
                                     Curso
                                 </th>
-                                <!--
-                                <th class="px-4 py-2 text-center text-xs font-medium ">
-                                    Inicio
-                                </th>
-                                <th class="px-4 py-2 text-center text-xs font-medium ">
-                                    Fin
-                                </th>
-                                -->
                                 <th class="px-4 py-2 text-center text-xs font-medium ">
                                     Certificado
                                 </th>
@@ -41,22 +33,6 @@
                                     <td class="text-center border px-6 py-4">
                                         {{ $course->title }}
                                     </td>
-                                    <!--
-                                    <td class="text-center border px-6 py-4">
-                                        @if($course->start_date)
-                                            {{ \Carbon\Carbon::parse($course->start_date)->format('d/m/Y') }}
-                                        @else
-                                            —
-                                        @endif
-                                    </td>
-                                    <td class="text-center border px-6 py-4">
-                                        @if($course->end_date)
-                                            {{ \Carbon\Carbon::parse($course->end_date)->format('d/m/Y') }}
-                                        @else
-                                            —
-                                        @endif
-                                    </td>
-                                    -->
                                     {{-- Columna Certificado --}}
                                     <td class="text-center border px-6 py-4">
                                         @if($cert)
@@ -95,11 +71,11 @@
                                         No estás inscripto en ningún curso.
                                     </td>
                                 </tr>
+                                @endif
                         </tbody>
                     </table>
                 </div>
-            @endif
-        
+
 
         {{-- BLOQUE 2: Cursos donde soy tutor (solo si tengo rol tutor) --}}
         @if(auth()->user()->hasRole('tutor'))

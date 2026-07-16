@@ -11,13 +11,6 @@ use App\Models\Tutor;
 
 class AdminController extends Controller
 {
-    public function courses()
-    {
-        $courses=Course::withCount('users')->get();
-        
-        return view('admin.courses.index', compact('courses'));
-    }
-
     public function exportCourseUsers(Course $course)
     {
         $filename = 'Alumnos_' . str_replace(' ','_',$course->title) . '_' . now()->format('Ymd_His') . '.xlsx';
@@ -37,14 +30,6 @@ class AdminController extends Controller
             ->get();
 
         return view('admin.courses.users', compact('course','users'));
-    }
-
-      public function showForm()
-    {
-        $users=User::all();
-        $courses=Course::all();
-
-        return view('admin.issue-certificate', compact('users', 'courses'));
     }
 
     public function editCourseUsers(Course $course, Request $request)
