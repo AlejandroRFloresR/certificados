@@ -67,8 +67,8 @@
         @endif
 
         @if($user && $certs->count())
-            <div class="overflow-hidden rounded-xl border border-gray-200 shadow-sm">
-                <div class="flex items-center justify-between gap-3 border-b border-gray-100 bg-gray-50 px-4 py-3 sm:px-5">
+            <div class="overflow-hidden rounded-xl border border-gray-200 bg-gray-100 shadow-sm">
+                <div class="flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-3 sm:px-5">
                     <div>
                         <p class="text-sm font-semibold text-gray-900">{{ $user->name }}</p>
                         @if($user->dni)
@@ -81,7 +81,7 @@
                 </div>
 
                 {{-- Desktop: tabla --}}
-                <div class="hidden overflow-x-auto sm:block">
+                <div class="hidden overflow-x-auto bg-white sm:block">
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-hospitalgray">
@@ -128,7 +128,7 @@
                 </div>
 
                 {{-- Mobile: tarjetas apiladas --}}
-                <div class="flex flex-col divide-y divide-gray-100 sm:hidden">
+                <div class="flex flex-col divide-y divide-gray-100 bg-white sm:hidden">
                     @foreach($certs as $c)
                         @php $type = $c->type ?? data_get($c->snapshot_data,'type'); @endphp
                         <div class="p-4">

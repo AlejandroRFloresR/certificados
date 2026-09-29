@@ -7,18 +7,29 @@ use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\CertificateController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\TutorController;
+use App\Http\Controllers\PublicCourseController;
 use App\Models\User;
-Use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
 
 /*
 |--------------------------------------------------------------------------
 | Web Routes
 |--------------------------------------------------------------------------
 */
-
+Route::middleware('auth')->group(function () {
+    Route::get('/demo', fn () => Inertia::render('Demo', ['mensaje' => 'Inertia funcionando']))->name('demo');
+    Route::post('/demo', function (\Illuminate\Http\Request $r) {
+        $r->validate(['nombre' => 'required|min:3']);
+        return back()->with('success', "Hola {$r->nombre}");
+    })->name('demo.store');
+});
 Route::get('/', [CertificateController::class, 'lookup'])->middleware('throttle:10,1')->name('home');
 Route::get('/certificates/download/{code}', [CertificateController::class, 'downloadByCode'])
     ->name('certificates.download');
+
+// Catálogo público de cursos (React)
+Route::get('/cursos', [PublicCourseController::class, 'index'])->name('catalog.index');
 
 /**
  * TUTORS

@@ -44,23 +44,8 @@
                               rows="4">{{ old('description', $course->description) }}</textarea>
                 </div>
 
-                {{-- Fechas: inicio y fin (50/50) --}}
-                <!--
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-white">Fecha de inicio</label>
-                        <input type="date" name="start_date"
-                               value="{{ old('start_date', isset($course->start_date) ? \Carbon\Carbon::parse($course->start_date)->format('Y-m-d') : '') }}"
-                               class="mt-1 w-full rounded-md border-gray-300 focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-white">Fecha de finalización</label>
-                        <input type="date" name="end_date"
-                               value="{{ old('end_date', isset($course->end_date) ? \Carbon\Carbon::parse($course->end_date)->format('Y-m-d') : '') }}"
-                               class="mt-1 w-full rounded-md border-gray-300 focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-                </div>
-                -->
+                @include('courses.partials.catalog-fields', ['course' => $course ?? null])
+
                 {{-- Botones --}}
                 <div class="flex items-center justify-end gap-2">
                     <a href="{{ route('courses.index') }}"

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Course;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class CourseController extends Controller
 {
@@ -21,6 +22,10 @@ class CourseController extends Controller
             'start_date'  => ['nullable','date'],
             'end_date'    => ['nullable','date','after_or_equal:start_date'],
             'hours'       => ['nullable','integer','min:1','max:2000'],
+            'category'    => ['nullable','string','max:100'],
+            'modality'    => ['nullable', Rule::in(array_keys(Course::MODALITIES))],
+            'location'    => ['nullable','string','max:255'],
+            'is_public'   => ['boolean'],
         ]);
 
         Course::create($validated);
@@ -48,6 +53,10 @@ class CourseController extends Controller
             'start_date'  => ['nullable','date'],
             'end_date'    => ['nullable','date','after_or_equal:start_date'],
             'hours'       => ['nullable','integer','min:1','max:2000'],
+            'category'    => ['nullable','string','max:100'],
+            'modality'    => ['nullable', Rule::in(array_keys(Course::MODALITIES))],
+            'location'    => ['nullable','string','max:255'],
+            'is_public'   => ['boolean'],
         ]);
         $course = Course::findOrFail($id);
         $course -> update($validated);
