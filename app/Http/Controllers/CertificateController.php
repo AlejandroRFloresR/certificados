@@ -11,6 +11,7 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Inertia\Inertia;
 
 class CertificateController extends Controller
 {
@@ -124,11 +125,23 @@ class CertificateController extends Controller
             }
         }
 
-        return view('home', [
-            'q'          => $q,
-            'user'       => $user,
-            'certs'      => $certs,
-            'certByCode' => $certByCode,
+        $found = $certByCode || ($user && $certs->count());
+
+        return Inertia::render('Home', [
+            'q'        => $q,
+            'searched' => $q !== '',
+            'found'    => (bool) $found,
+            'holder'   => $found ? [
+                'name' => $user->name,
+                'dni'  => $user->dni,
+            ] : null,
+            'certificates' => $found ? $certs->map(fn ($c) => [
+                'code'         => $c->certificate_code,
+                'course'       => $c->course->title ?? '—',
+                'type'         => $c->type ?? data_get($c->snapshot_data, 'type'),
+                'issued'       => $c->issued_date ? Carbon::parse($c->issued_date)->format('d/m/Y') : null,
+                'download_url' => route('certificates.download', $c->certificate_code),
+            ])->values() : [],
         ]);
     }
 

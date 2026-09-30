@@ -1,37 +1,34 @@
 import { useMemo, useState } from 'react';
-import CourseCard from './CourseCard';
-import CourseDialog from './CourseDialog';
-import { SearchIcon, CheckIcon } from './Icons';
-import { TABS, normalize, sortCourses } from './utils';
+import { usePage } from '@inertiajs/react';
+import PublicLayout from '@/Layouts/PublicLayout';
+import CourseCard from '@/Components/Catalog/CourseCard';
+import CourseDialog from '@/Components/Catalog/CourseDialog';
+import { SearchIcon, CheckIcon } from '@/Components/Catalog/Icons';
+import { TABS, normalize, sortCourses } from '@/Components/Catalog/utils';
 
 const selectClass =
     'rounded-lg border-gray-300 py-2 pl-3 pr-8 text-sm text-gray-700 focus:border-hospitalblue focus:ring-hospitalblue';
 
-export default function CourseCatalog({
-    courses = [],
-    modalities = {},
-    auth = false,
-    loginUrl,
-    registerUrl,
-    csrf,
-    flash,
-}) {
+export default function Catalog({ courses = [], modalities = {} }) {
+    const { auth, flash } = usePage().props;
     const [query, setQuery] = useState('');
     const [tab, setTab] = useState('disponibles');
     const [category, setCategory] = useState('');
     const [modality, setModality] = useState('');
-    // ?curso=ID abre el detalle directamente (links compartibles)
-    const [selected, setSelected] = useState(() => {
-        const id = Number(new URLSearchParams(window.location.search).get('curso'));
-        return courses.find((c) => c.id === id) ?? null;
-    });
+    // Se guarda solo el id: cuando te inscribís, Inertia recarga `courses`
+    // y el diálogo muestra automáticamente "Ya estás inscripto"
+    const [selectedId, setSelectedId] = useState(
+        () => Number(new URLSearchParams(window.location.search).get('curso')) || null
+    );
+    const selected = courses.find((c) => c.id === selectedId) ?? null;
 
     const openCourse = (course) => {
-        setSelected(course);
+        setSelectedId(course?.id ?? null);
         const url = new URL(window.location.href);
         if (course) url.searchParams.set('curso', course.id);
         else url.searchParams.delete('curso');
-        window.history.replaceState(null, '', url);
+        // Mantener window.history.state: Inertia guarda ahí la página, y sin eso el botón "Atrás" falla
+        window.history.replaceState(window.history.state, '', url);
     };
 
     const categories = useMemo(
@@ -72,7 +69,7 @@ export default function CourseCatalog({
     };
 
     return (
-        <>
+        <PublicLayout title="Cursos">
             <section className="bg-gradient-to-br from-hospitalblue to-hospitalblue-dark px-4 py-12 sm:px-8 sm:py-16">
                 <div className="mx-auto max-w-xl text-center">
                     <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-white/70">
@@ -101,13 +98,12 @@ export default function CourseCatalog({
             </section>
 
             <div className="mx-auto max-w-6xl px-4 py-8 sm:px-8">
-                {flash && (
+                  {flash.success && (
                     <div className="mb-6 flex items-start gap-2 rounded-lg border border-green-200 bg-green-50 p-3.5 text-sm text-green-800">
                         <CheckIcon className="mt-0.5 h-[18px] w-[18px] shrink-0" />
-                        <span>{flash}</span>
+                        <span>{flash.success}</span>
                     </div>
                 )}
-
                 <div className="flex flex-col gap-4 border-b border-gray-200 pb-4 md:flex-row md:items-end md:justify-between">
                     <div role="tablist" aria-label="Estado del curso" className="-mb-4 flex gap-1 overflow-x-auto">
                         {TABS.map((t) => (
@@ -184,11 +180,8 @@ export default function CourseCatalog({
                 course={selected}
                 modalities={modalities}
                 onClose={() => openCourse(null)}
-                auth={auth}
-                loginUrl={loginUrl}
-                registerUrl={registerUrl}
-                csrf={csrf}
+                auth={!!auth.user}
             />
-        </>
+        </PublicLayout>
     );
 }

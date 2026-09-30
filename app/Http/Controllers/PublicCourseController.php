@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Course;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 class PublicCourseController extends Controller
 {
@@ -45,16 +46,9 @@ class PublicCourseController extends Controller
             ])
             ->values();
 
-        $props = [
-            'courses'     => $courses,
-            'modalities'  => Course::MODALITIES,
-            'auth'        => (bool) $user,
-            'loginUrl'    => route('login'),
-            'registerUrl' => Route::has('register') ? route('register') : null,
-            'csrf'        => csrf_token(),
-            'flash'       => session('success'),
-        ];
-
-        return view('courses.catalog', compact('props'));
+        return Inertia::render('Catalog', [
+            'courses'    => $courses,
+            'modalities' => Course::MODALITIES,
+        ]);
     }
 }

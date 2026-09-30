@@ -9,7 +9,6 @@ export default defineConfig({
             input: [
                 'resources/css/app.css',
                 'resources/js/app.js',
-                'resources/js/catalog.jsx',
                 'resources/js/inertia.jsx',
             ],
             refresh: true,

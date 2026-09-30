@@ -1,6 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StatusBadge } from './CourseCard';
 import { formatRange } from './utils';
+import { router } from '@inertiajs/react';
+
 import { CalendarIcon, CheckIcon, ClockIcon, CloseIcon, MonitorIcon, PinIcon, UserIcon } from './Icons';
 
 function Detail({ icon: Icon, label, children }) {
@@ -15,7 +17,9 @@ function Detail({ icon: Icon, label, children }) {
     );
 }
 
-function EnrollAction({ course, auth, loginUrl, registerUrl, csrf }) {
+function EnrollAction({ course, auth }) {
+    const [sending, setSending] = useState(false);
+
     if (course.status === 'finalizado') {
         return <p className="text-sm text-hospitalgray">Este curso ya finalizó.</p>;
     }
@@ -29,31 +33,36 @@ function EnrollAction({ course, auth, loginUrl, registerUrl, csrf }) {
     }
 
     if (!auth) {
+        // Login y registro todavía son Blade: <a>, no <Link>
         return (
             <div className="flex flex-wrap items-center gap-3">
-                <a href={loginUrl}
+                <a href={route('login')}
                    className="rounded-lg bg-hospitalblue px-4 py-2.5 text-sm font-semibold text-white hover:bg-hospitalblue-dark">
                     Iniciá sesión para inscribirte
                 </a>
-                {registerUrl && (
-                    <a href={registerUrl} className="text-sm font-semibold text-hospitalblue hover:underline">
-                        Crear cuenta
-                    </a>
-                )}
+                <a href={route('register')} className="text-sm font-semibold text-hospitalblue hover:underline">
+                    Crear cuenta
+                </a>
             </div>
         );
     }
 
+    const enroll = () => {
+        router.post(course.enroll_url, {}, {
+            preserveScroll: true,
+            onStart: () => setSending(true),
+            onFinish: () => setSending(false),
+        });
+    };
+
     return (
-        <form method="POST" action={course.enroll_url}>
-            <input type="hidden" name="_token" value={csrf} />
-            <button type="submit"
-                    className="rounded-lg bg-hospitalblue px-4 py-2.5 text-sm font-semibold text-white hover:bg-hospitalblue-dark">
-                Inscribirme
-            </button>
-        </form>
+        <button type="button" onClick={enroll} disabled={sending}
+                className="rounded-lg bg-hospitalblue px-4 py-2.5 text-sm font-semibold text-white hover:bg-hospitalblue-dark disabled:opacity-60">
+            {sending ? 'Inscribiendo…' : 'Inscribirme'}
+        </button>
     );
 }
+
 
 export default function CourseDialog({ course, modalities, onClose, ...authProps }) {
     const ref = useRef(null);
