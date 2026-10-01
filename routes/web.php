@@ -95,7 +95,7 @@ Route::middleware(['auth', 'role:admin'])
 /**
  * Cursos (público / general)
  */
-Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
+Route::get('/courses', [CourseController::class, 'index'])->middleware('auth')->name('courses.index');
 
 /**
  * Dashboard

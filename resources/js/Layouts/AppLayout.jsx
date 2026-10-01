@@ -12,7 +12,7 @@ export default function AppLayout({ title, actions, children }) {
     // Un solo lugar donde se definen los links: se usan en escritorio y en móvil
      const links = [
         { label: 'Mis cursos',        href: route('dashboard'),     active: route().current('dashboard') },
-        { label: 'Listado de Cursos', href: route('courses.index'), active: route().current('courses.*'), native: true },
+        { label: 'Listado de Cursos', href: route('courses.index'), active: route().current('courses.*') },
         ...(isAdmin ? [
             { label: 'Tutores',  href: route('tutors.index'),      active: route().current('tutors.*'),      native: true },
             { label: 'Usuarios', href: route('admin.users.index'), active: route().current('admin.users.*'), native: true },
