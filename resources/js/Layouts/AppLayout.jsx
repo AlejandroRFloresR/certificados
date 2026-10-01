@@ -15,7 +15,7 @@ export default function AppLayout({ title, actions, children }) {
         { label: 'Listado de Cursos', href: route('courses.index'), active: route().current('courses.*') },
         ...(isAdmin ? [
             { label: 'Tutores',  href: route('tutors.index'),      active: route().current('tutors.*'),      native: true },
-            { label: 'Usuarios', href: route('admin.users.index'), active: route().current('admin.users.*'), native: true },
+            { label: 'Usuarios', href: route('admin.users.index'), active: route().current('admin.users.*')},
         ] : []),
     ];
 

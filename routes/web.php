@@ -82,8 +82,6 @@ Route::middleware(['auth', 'role:admin'])
             ->name('users.import.store');
         // Acciones extra coherentes con kebab-case
         Route::post('users/{user}/assign-role', [AdminUserController::class, 'assignRole'])->name('users.assign-role');
-        Route::get('users/{user}/password', [AdminUserController::class, 'editPassword'])->name('users.edit-password');
-        Route::put('users/{user}/password', [AdminUserController::class, 'updatePassword'])->name('users.update-password');
     });
   
     Route::middleware(['auth','role:tutor'])->group(function () {
