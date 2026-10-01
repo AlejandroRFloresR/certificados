@@ -10,12 +10,12 @@ export default function AppLayout({ title, actions, children }) {
     const [userOpen, setUserOpen] = useState(false);
 
     // Un solo lugar donde se definen los links: se usan en escritorio y en móvil
-    const links = [
-        { label: 'Mis cursos',        href: route('dashboard'),         active: route().current('dashboard') },
-        { label: 'Listado de Cursos', href: route('courses.index'),     active: route().current('courses.*') },
+     const links = [
+        { label: 'Mis cursos',        href: route('dashboard'),     active: route().current('dashboard') },
+        { label: 'Listado de Cursos', href: route('courses.index'), active: route().current('courses.*'), native: true },
         ...(isAdmin ? [
-            { label: 'Tutores',  href: route('tutors.index'),       active: route().current('tutors.*') },
-            { label: 'Usuarios', href: route('admin.users.index'),  active: route().current('admin.users.*') },
+            { label: 'Tutores',  href: route('tutors.index'),      active: route().current('tutors.*'),      native: true },
+            { label: 'Usuarios', href: route('admin.users.index'), active: route().current('admin.users.*'), native: true },
         ] : []),
     ];
 
@@ -31,7 +31,7 @@ export default function AppLayout({ title, actions, children }) {
                         </Link>
                         <div className="hidden items-center gap-1 sm:flex">
                             {links.map((l) => (
-                                <NavLink key={l.label} href={l.href} active={l.active}>{l.label}</NavLink>
+                                <NavLink key={l.label} href={l.href} active={l.active} native={l.native}>{l.label}</NavLink>
                             ))}
                         </div>
                     </div>
@@ -83,12 +83,16 @@ export default function AppLayout({ title, actions, children }) {
                 {/* Menú desplegado (móvil) */}
                 {menuOpen && (
                     <div className="space-y-1 border-t border-white/10 px-4 py-3 sm:hidden">
-                        {links.map((l) => (
-                            <Link key={l.label} href={l.href}
-                                  className={`block rounded-md px-3 py-2 text-sm font-medium ${l.active ? 'bg-white/15 text-white' : 'text-white/80'}`}>
-                                {l.label}
-                            </Link>
-                        ))}
+                        {links.map((l) => {
+                            const Tag = l.native ? 'a' : Link;
+                            return (
+                                <Tag key={l.label} href={l.href}
+                                    className={`block rounded-md px-3 py-2 text-sm font-medium ${l.active ? 'bg-white/15 text-white' : 'text-white/80'}`}>
+                                    {l.label}
+                                </Tag>
+                            );
+                        })}
+
                         <div className="mt-2 border-t border-white/10 pt-3">
                             <p className="px-3 text-sm font-medium text-white">{auth.user?.name}</p>
                             <p className="px-3 text-xs text-white/60">{auth.user?.email}</p>

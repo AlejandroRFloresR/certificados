@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { router } from '@inertiajs/react';
 import PublicLayout from '@/Layouts/PublicLayout';
+import TypeBadge from '@/Components/TypeBadge';
+import DownloadLink from '@/Components/DownloadLink';
 
 function Alert({ ok, children }) {
     return (
@@ -9,27 +11,6 @@ function Alert({ ok, children }) {
             : 'border-red-200 bg-red-50 text-red-800'}`}>
             {children}
         </div>
-    );
-}
-
-function TypeBadge({ type }) {
-    if (!type) return <span>—</span>;
-    return (
-        <span className="inline-flex rounded-full bg-hospitalblue/10 px-2 py-0.5 text-xs font-semibold text-hospitalblue">
-            {type.charAt(0).toUpperCase() + type.slice(1)}
-        </span>
-    );
-}
-
-// Descarga de PDF: <a> normal, NO <Link> (Inertia no puede navegar a un archivo)
-function DownloadLink({ href }) {
-    return (
-        <a href={href} className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-semibold text-hospitalblue hover:bg-hospitalblue/10">
-            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            Descargar
-        </a>
     );
 }
 

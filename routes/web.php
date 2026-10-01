@@ -11,6 +11,7 @@ use App\Http\Controllers\PublicCourseController;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use App\Http\Controllers\DashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -99,32 +100,9 @@ Route::get('/courses', [CourseController::class, 'index'])->name('courses.index'
 /**
  * Dashboard
  */
-Route::get('/dashboard', function () {
-    /** @var \App\Models\User $user */
-    $user = Auth::user();
-
-    // 1) Cursos donde el usuario está inscripto (rol alumno)
-    $studentCourses = $user->courses()
-        ->orderBy('start_date', 'desc')
-        ->get();
-
-    // 2) Certificados del usuario, indexados por course_id
-    $certsByCourse = $user->certificates()
-        ->select('id','course_id','certificate_code','type','issued_date','snapshot_data')
-        ->get()
-        ->keyBy('course_id');  // => [course_id => Certificate]
-
-    // 3) Cursos donde es tutor (si tiene rol tutor y tutor asociado)
-    $tutorCourses = collect();
-    if ($user->hasRole('tutor') && $user->tutor) {
-        $tutorCourses = $user->tutor
-            ->courses()
-            ->orderBy('start_date', 'desc')
-            ->get();
-    }
-
-    return view('dashboard', compact('studentCourses','certsByCourse','tutorCourses'));
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', DashboardController::class)
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
 
 /**
  * Rutas autenticadas (usuarios logueados)
