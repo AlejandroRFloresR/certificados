@@ -34,9 +34,8 @@ function Actions({ course, isAdmin }) {
             {isAdmin && (
                 <>
                     <Link href={route('admin.courses.edit', course.id)} className={linkClass}>Editar</Link>
-                    {/* Pantallas Blade todavía: <a> */}
-                    <a href={route('admin.courses.users', course.id)} className={linkClass}>Alumnos</a>
-                    <a href={route('admin.courses.tutors.edit', course.id)} className={linkClass}>Tutores</a>
+                    <Link href={route('admin.courses.users', course.id)} className={linkClass}>Alumnos</Link>
+                    <Link href={route('admin.courses.tutors.edit', course.id)} className={linkClass}>Tutores</Link>
                     <button type="button" onClick={destroy}
                             className="rounded-md px-2.5 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50">
                         Eliminar

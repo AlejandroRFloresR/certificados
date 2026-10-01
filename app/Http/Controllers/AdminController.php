@@ -8,6 +8,10 @@ use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Tutor;
+use App\Models\Certificate;
+use Inertia\Inertia;
+use Inertia\Response;
+
 
 class AdminController extends Controller
 {
@@ -16,49 +20,65 @@ class AdminController extends Controller
         $filename = 'Alumnos_' . str_replace(' ','_',$course->title) . '_' . now()->format('Ymd_His') . '.xlsx';
         return Excel::download(new CourseUsersExport($course), $filename);
     }
-    public function courseUsers(Course $course)
+     public function courseUsers(Course $course): Response
     {
-        // tutores del curso (para tu columna “Tutores”)
-        $course->load('tutors');
+        $course->load('tutors.user');
 
-        // usuarios del curso + SOLO sus certificados de ESTE curso
-        $users = $course->users()
-            ->with(['certificates' => function ($q) use ($course) {
-                $q->where('course_id', $course->id)
-                    ->select('id','user_id','course_id','certificate_code','type','snapshot_data'); // campos mínimos
-            }])
-            ->get();
+        // Alumnos del curso + solo su certificado de ESTE curso
+        $students = $course->users()
+            ->with(['certificates' => fn ($q) => $q
+                ->where('course_id', $course->id)
+                ->select('id', 'user_id', 'course_id', 'certificate_code', 'type', 'snapshot_data')])
+            ->orderBy('name')
+            ->get()
+            ->map(function ($user) {
+                $cert = $user->certificates->first();
 
-        return view('admin.courses.users', compact('course','users'));
+                return [
+                    'id'          => $user->id,
+                    'name'        => $user->name,
+                    'email'       => $user->email,
+                    'dni'         => $user->dni,
+                    'enrolled_at' => $user->pivot->created_at?->format('d/m/Y'),
+                    'certificate' => $cert ? [
+                        'type'         => $cert->type ?? data_get($cert->snapshot_data, 'type'),
+                        'download_url' => route('certificates.download', $cert->certificate_code),
+                    ] : null,
+                ];
+            });
+
+        return Inertia::render('Admin/Courses/Students', [
+            'course' => [
+                'id'     => $course->id,
+                'title'  => $course->title,
+                'tutors' => $course->tutors->map(fn ($t) => optional($t->user)->name ?? $t->name)->values(),
+            ],
+            'students' => $students,
+            'types'    => Certificate::TYPES,
+        ]);
     }
 
-    public function editCourseUsers(Course $course, Request $request)
+    public function editCourseUsers(Course $course, Request $request): Response
     {
         $q = trim((string) $request->query('q', ''));
 
-        $usersQuery = User::query()
-            ->select('id','name','email','dni','telefono')
-            ->orderBy('name');
+        $items = User::query()
+            ->select('id', 'name', 'email', 'dni', 'telefono')
+            ->when($q !== '', fn ($query) => $query->where(fn ($w) => $w
+                ->where('name', 'like', "%{$q}%")
+                ->orWhere('email', 'like', "%{$q}%")
+                ->orWhere('dni', 'like', "%{$q}%")))
+            ->orderBy('name')
+            ->limit(300)
+            ->get();
 
-        if ($q !== '') {
-            $usersQuery->where(function($w) use ($q) {
-                $w->where('name','like',"%{$q}%")
-                ->orWhere('email','like',"%{$q}%")
-                ->orWhere('dni','like',"%{$q}%");
-            });
-        }
-
-        // Traemos una lista razonable; podés usar paginate si hay muchos
-        $users = $usersQuery->limit(300)->get();
-
-        // IDs actualmente inscriptos
-        $enrolledIds = $course->users()->pluck('users.id')->all();
-
-        return view('admin.courses.users-edit', [
-            'course'      => $course,
-            'users'       => $users,
-            'enrolledIds' => $enrolledIds,
-            'q'           => $q,
+        return Inertia::render('Admin/Courses/Assign', [
+            'mode'     => 'users',
+            'course'   => $course->only('id', 'title'),
+            'items'    => $items,
+            // TODOS los inscriptos, no solo los que aparecen en la búsqueda
+            'selected' => $course->users()->pluck('users.id'),
+            'q'        => $q,
         ]);
     }
 
@@ -80,33 +100,34 @@ class AdminController extends Controller
             ->with('success', 'Alumnos del curso actualizados.');
     
     }
-    public function editCourseTutors(Course $course, Request $request)
+    public function editCourseTutors(Course $course, Request $request): Response
     {
         $q = trim((string) $request->query('q', ''));
 
-        $tutorsQuery = Tutor::query()
-            ->with('user:id,name,email') // opcional
-            ->orderBy('name');
+        $items = Tutor::query()
+            ->with('user:id,name,email')
+            ->when($q !== '', fn ($query) => $query->where(fn ($w) => $w
+                ->where('name', 'like', "%{$q}%")
+                ->orWhereHas('user', fn ($u) => $u
+                    ->where('name', 'like', "%{$q}%")
+                    ->orWhere('email', 'like', "%{$q}%"))))
+            ->orderBy('name')
+            ->limit(300)
+            ->get()
+            ->map(fn ($t) => [
+                'id'    => $t->id,
+                'name'  => $t->user->name ?? $t->name,
+                'email' => $t->user->email ?? null,
+            ]);
 
-        if ($q !== '') {
-            $tutorsQuery->where('name','like',"%{$q}%")
-                ->orWhereHas('user', function ($w) use ($q) {
-                    $w->where('name','like',"%{$q}%")
-                    ->orWhere('email','like',"%{$q}%");
-                });
-        }
-
-        $tutors = $tutorsQuery->limit(300)->get();
-        $selected = $course->tutors()->pluck('tutors.id')->all();
-
-        return view('admin.courses.tutors-edit', [
-            'course'   => $course,
-            'tutors'   => $tutors,
-            'selected' => $selected,
+        return Inertia::render('Admin/Courses/Assign', [
+            'mode'     => 'tutors',
+            'course'   => $course->only('id', 'title'),
+            'items'    => $items,
+            'selected' => $course->tutors()->pluck('tutors.id'),
             'q'        => $q,
         ]);
     }
-
     public function updateCourseTutors(Course $course, Request $request)
     {
         $data = $request->validate([
