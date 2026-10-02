@@ -33,12 +33,13 @@ Route::get('/certificates/download/{code}', [CertificateController::class, 'down
 Route::get('/cursos', [PublicCourseController::class, 'index'])->name('catalog.index');
 
 /**
- * TUTORS
- * (Tip: evaluá proteger estas rutas con auth/role si no deben ser públicas)
+ * TUTORS (solo admin)
  */
-Route::get('/tutors/{tutor}/edit-courses', [TutorController::class, 'editCourses'])->name('tutors.editCourses');
-Route::put('/tutors/{tutor}/update-courses', [TutorController::class, 'updateCourses'])->name('tutors.updateCourses');
-Route::get('/tutors', [TutorController::class, 'index'])->name('tutors.index');
+Route::middleware(['auth', 'role:admin'])->group(function () {
+    Route::get('/tutors/{tutor}/edit-courses', [TutorController::class, 'editCourses'])->name('tutors.editCourses');
+    Route::put('/tutors/{tutor}/update-courses', [TutorController::class, 'updateCourses'])->name('tutors.updateCourses');
+    Route::get('/tutors', [TutorController::class, 'index'])->name('tutors.index');
+});
 
 
 /**

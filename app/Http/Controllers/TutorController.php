@@ -2,116 +2,106 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Tutor;
 use App\Models\Course;
+use App\Models\Tutor;
+use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class TutorController extends Controller
-{   
-    public function index()
-    {
-        $tutors= Tutor::whereHas('user')
-        ->with(['user:id,name,email','courses:id,title'])
-        ->get();
-    
-        return view('tutors.index',compact('tutors'));
-    }
-
+{
     private const MAX_TUTORS_PER_COURSE = 3;
 
-    public function editCourses(Tutor $tutor)
-        {
-            // Traemos el contador de tutores por curso para poder deshabilitar los llenos
-            $courses = \App\Models\Course::withCount('tutors')->orderBy('title')->get();
-            $tutor->load('courses:id'); // para saber cuáles ya tiene
-            return view('tutors.edit-courses', compact('tutor','courses'));
-        }
-
-        public function updateCourses(Request $request, Tutor $tutor)
-        {
-            $data = $request->validate([
-                'courses'   => ['nullable','array'],
-                'courses.*' => ['integer','exists:courses,id'],
-            ]);
-
-            $requested = array_values(array_unique($data['courses'] ?? [])); // normalizar
-            $already   = $tutor->courses()->pluck('courses.id')->all();      // cursos que ya tenía
-            $toAdd     = array_diff($requested, $already);                    // altas nuevas
-
-            // Cargamos counts de los cursos a los que quiere entrar
-            $coursesInfo = \App\Models\Course::withCount('tutors')
-                ->whereIn('id', $toAdd)
-                ->get()
-                ->keyBy('id');
-
-            // Verificamos cuáles ya están llenos (>= MAX y el tutor no estaba)
-            $fullTitles = [];
-            foreach ($toAdd as $courseId) {
-                $c = $coursesInfo[$courseId] ?? null;
-                if ($c && $c->tutors_count >= self::MAX_TUTORS_PER_COURSE) {
-                    $fullTitles[] = $c->title;
-                }
-            }
-
-            if ($fullTitles) {
-                return back()
-                    ->withErrors([
-                        'courses' => 'Estos cursos ya alcanzaron el máximo de '
-                                . self::MAX_TUTORS_PER_COURSE
-                                . ' tutores: ' . implode(', ', $fullTitles),
-                    ])
-                    ->withInput();
-            }
-
-            // Si todo OK, sincronizamos (agrega y quita en una sola llamada)
-            $tutor->courses()->sync($requested);
-
-            return redirect()
-                ->route('tutors.index')
-                ->with('success', 'Cursos actualizados correctamente.');
-        }
-    public function editSignature(Tutor $tutor)
+    public function index(): Response
     {
-        // opcional: cargar user por si querés mostrar el nombre desde allí
-        $tutor->load('user:id,name,email');
-        return view('tutors.signature', [
-            'tutor' => $tutor,
-            'action' => route('admin.tutors.signature.update', $tutor),
-            'title' => 'Firma del tutor — ' . ($tutor->user->name ?? $tutor->name),
+        $tutors = Tutor::whereHas('user')
+            ->with(['user:id,name,email', 'courses:id,title'])
+            ->get()
+            ->map(fn (Tutor $t) => [
+                'id'            => $t->id,
+                'name'          => $t->user->name,
+                'email'         => $t->user->email,
+                'signature_url' => $this->signatureUrl($t),
+                'courses'       => $t->courses->pluck('title'),
+            ])
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
+
+        return Inertia::render('Admin/Tutors/Index', ['tutors' => $tutors]);
+    }
+
+    public function editCourses(Tutor $tutor): Response
+    {
+        $tutor->load('user:id,name', 'courses:id');
+
+        return Inertia::render('Admin/Tutors/Courses', [
+            'tutor'    => ['id' => $tutor->id, 'name' => $tutor->user->name ?? $tutor->name],
+            'courses'  => Course::withCount('tutors')->orderBy('title')->get(['id', 'title'])
+                ->map(fn ($c) => ['id' => $c->id, 'title' => $c->title, 'tutors_count' => $c->tutors_count]),
+            'selected' => $tutor->courses->pluck('id'),
+            'max'      => self::MAX_TUTORS_PER_COURSE,
         ]);
+    }
+
+    public function updateCourses(Request $request, Tutor $tutor)
+    {
+        $data = $request->validate([
+            'courses'   => ['nullable', 'array'],
+            'courses.*' => ['integer', 'exists:courses,id'],
+        ]);
+
+        $requested = array_values(array_unique($data['courses'] ?? []));
+        $already   = $tutor->courses()->pluck('courses.id')->all();
+        $toAdd     = array_diff($requested, $already);
+
+        // Cursos nuevos que ya tienen el cupo completo
+        $fullTitles = Course::withCount('tutors')
+            ->whereIn('id', $toAdd)
+            ->get()
+            ->filter(fn ($c) => $c->tutors_count >= self::MAX_TUTORS_PER_COURSE)
+            ->pluck('title')
+            ->all();
+
+        if ($fullTitles) {
+            return back()->withErrors([
+                'courses' => 'Estos cursos ya alcanzaron el máximo de ' . self::MAX_TUTORS_PER_COURSE
+                    . ' tutores: ' . implode(', ', $fullTitles),
+            ]);
+        }
+
+        $tutor->courses()->sync($requested);
+
+        return redirect()->route('tutors.index')->with('success', 'Cursos actualizados correctamente.');
+    }
+
+    // ========== ADMIN: firma de cualquier tutor ==========
+
+    public function editSignature(Tutor $tutor): Response
+    {
+        return $this->signaturePage($tutor, 'admin');
     }
 
     public function updateSignature(Request $request, Tutor $tutor)
     {
-        $data = $request->validate([
-            'signature' => ['required','image','mimes:png','max:4096'], // ~2MB
+        $request->validate([
+            'signature' => ['required', 'image', 'mimes:png', 'max:4096'],
         ]);
 
-        // borrar archivo anterior si existe
-        if ($tutor->signature && Storage::disk('public')->exists($tutor->signature)) {
-            Storage::disk('public')->delete($tutor->signature);
-        }
+        $this->storeSignature($tutor, $request->file('signature'));
 
-        // guardar nuevo
-        $path = $request->file('signature')->store('signatures', 'public');
-
-        $tutor->update(['signature' => $path]);
-
-        return back()->with('success','Firma actualizada.');
+        return back()->with('success', 'Firma actualizada.');
     }
 
-    // ========== TUTOR (self-service) ==========
-    public function editMySignature(Request $request)
+    // ========== TUTOR: su propia firma ==========
+
+    public function editMySignature(Request $request): Response
     {
-        $tutor = $request->user()->tutor; // relación hasOne en User
+        $tutor = $request->user()->tutor;
         abort_if(!$tutor, 404, 'No sos tutor.');
 
-        return view('tutors.signature', [
-            'tutor' => $tutor,
-            'action' => route('tutors.me.signature.update'),
-            'title' => 'Mi firma',
-        ]);
+        return $this->signaturePage($tutor, 'self');
     }
 
     public function updateMySignature(Request $request)
@@ -119,19 +109,48 @@ class TutorController extends Controller
         $tutor = $request->user()->tutor;
         abort_if(!$tutor, 404, 'No sos tutor.');
 
-        $data = $request->validate([
-            'signature' => ['required','image','mimes:png,jpg,jpeg,webp','max:2048'],
+        $request->validate([
+            'signature' => ['required', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
         ]);
 
+        $this->storeSignature($tutor, $request->file('signature'));
+
+        return back()->with('success', 'Firma actualizada.');
+    }
+
+    // ========== Helpers ==========
+
+    /** Misma página para admin y tutor; cambian la URL de guardado, las reglas y el "Volver" */
+    private function signaturePage(Tutor $tutor, string $mode): Response
+    {
+        $tutor->loadMissing('user:id,name');
+        $isAdmin = $mode === 'admin';
+
+        return Inertia::render('Tutors/Signature', [
+            'mode'          => $mode,
+            'tutorName'     => $tutor->user->name ?? $tutor->name,
+            'signature_url' => $this->signatureUrl($tutor),
+            'updateUrl'     => $isAdmin ? route('admin.tutors.signature.update', $tutor) : route('tutors.me.signature.update'),
+            'backUrl'       => $isAdmin ? route('tutors.index') : route('dashboard'),
+            'rules'         => $isAdmin
+                ? ['accept' => '.png', 'hint' => 'Formato PNG, hasta 4 MB.']
+                : ['accept' => '.png,.jpg,.jpeg,.webp', 'hint' => 'PNG, JPG o WEBP, hasta 2 MB.'],
+        ]);
+    }
+
+    /** Guarda la firma nueva y borra la anterior */
+    private function storeSignature(Tutor $tutor, UploadedFile $file): void
+    {
         if ($tutor->signature && Storage::disk('public')->exists($tutor->signature)) {
             Storage::disk('public')->delete($tutor->signature);
         }
 
-        $path = $request->file('signature')->store('signatures', 'public');
+        $tutor->update(['signature' => $file->store('signatures', 'public')]);
+    }
 
-        $tutor->update(['signature' => $path]);
-
-        return back()->with('success','Firma actualizada.');
+    private function signatureUrl(Tutor $tutor): ?string
+    {
+        return $tutor->signature ? asset('storage/' . $tutor->signature) : null;
     }
 }
 
