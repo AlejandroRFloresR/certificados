@@ -10,7 +10,6 @@ use App\Http\Controllers\TutorController;
 use App\Http\Controllers\PublicCourseController;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
-use Inertia\Inertia;
 use App\Http\Controllers\DashboardController;
 
 /*
@@ -18,13 +17,6 @@ use App\Http\Controllers\DashboardController;
 | Web Routes
 |--------------------------------------------------------------------------
 */
-Route::middleware('auth')->group(function () {
-    Route::get('/demo', fn () => Inertia::render('Demo', ['mensaje' => 'Inertia funcionando']))->name('demo');
-    Route::post('/demo', function (\Illuminate\Http\Request $r) {
-        $r->validate(['nombre' => 'required|min:3']);
-        return back()->with('success', "Hola {$r->nombre}");
-    })->name('demo.store');
-});
 Route::get('/', [CertificateController::class, 'lookup'])->middleware('throttle:10,1')->name('home');
 Route::get('/certificates/download/{code}', [CertificateController::class, 'downloadByCode'])
     ->name('certificates.download');
@@ -100,7 +92,7 @@ Route::get('/courses', [CourseController::class, 'index'])->middleware('auth')->
  * Dashboard
  */
 Route::get('/dashboard', DashboardController::class)
-    ->middleware(['auth', 'verified'])
+    ->middleware(['auth'])
     ->name('dashboard');
 
 /**
@@ -116,7 +108,6 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // FIX: se quitó la "}" extra en la URL
     Route::post('courses/{course}/enroll', [CourseController::class, 'enroll'])->name('courses.enroll');
