@@ -25,4 +25,10 @@ class TrustProxies extends Middleware
         Request::HEADER_X_FORWARDED_PORT |
         Request::HEADER_X_FORWARDED_PROTO |
         Request::HEADER_X_FORWARDED_AWS_ELB;
+
+    /** La IP del proxy se configura en config/app.php (PROXY_IP en .env) */
+    protected function proxies()
+    {
+        return config('app.proxy_ip') ?: $this->proxies;
+    }
 }

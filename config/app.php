@@ -60,6 +60,13 @@ return [
     'asset_url' => env('ASSET_URL'),
 
     /*
+    | IP del proxy reverso que publica el sistema en APP_URL (el dominio).
+    | Los pedidos que llegan desde esta IP arman sus URLs con APP_URL;
+    | los que entran directo (por IP interna) usan su propia dirección.
+    */
+    'proxy_ip' => env('PROXY_IP', '172.22.112.9'),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
