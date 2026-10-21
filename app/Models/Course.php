@@ -27,7 +27,7 @@ class Course extends Model
     
     protected $fillable = [
         'title', 'description', 'start_date', 'end_date', 'hours',
-        'is_public', 'category', 'modality', 'location',
+        'is_public', 'category', 'modality', 'location', 'moodle_shortname',
     ];
     protected $casts =[
         'hours'      => 'integer',

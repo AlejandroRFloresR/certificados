@@ -12,6 +12,9 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
+use App\Services\CertificateIssuer;
+use App\Services\CertificateTypeConflict;
+
 
 class CertificateController extends Controller
 {
@@ -36,7 +39,7 @@ class CertificateController extends Controller
         }
 
         // Garantiza un único certificado por (user, course) y tipo coherente
-        $certificate = $this->firstOrCreateCertificate($user, $course, $data['type']);
+        $certificate = $this->issueOrAbort($user, $course, $data['type']);
 
         return back()
             ->with('success', 'Certificado emitido correctamente.')
@@ -68,7 +71,7 @@ class CertificateController extends Controller
         }
 
         // 3) Crear o devolver el existente (y validar coherencia de tipo)
-        $certificate = $this->firstOrCreateCertificate($user, $course, $type);
+        $certificate = $this->issueOrAbort($user, $course, $type);
 
         // 4) Render y descarga
         return $this->renderPdf($certificate);
@@ -153,74 +156,14 @@ class CertificateController extends Controller
      * Crea el certificado si no existe para (user, course).
      * Si existe, valida coherencia de tipo y lo devuelve.
      */
-    private function firstOrCreateCertificate(User $user, Course $course, string $type): Certificate
+        /** Emite usando el servicio; un conflicto de tipo responde 409 como antes */
+    private function issueOrAbort(User $user, Course $course, string $type): Certificate
     {
-        $existing = Certificate::where('user_id', $user->id)
-            ->where('course_id', $course->id)
-            ->first();
-
-        if ($existing) {
-            if (($existing->type ?? null) !== $type) {
-                abort(409, 'Ya existe un certificado de otro tipo para este curso y usuario.');
-            }
-            return $existing;
+        try {
+            return app(CertificateIssuer::class)->issue($user, $course, $type);
+        } catch (CertificateTypeConflict $e) {
+            abort(409, $e->getMessage());
         }
-        $courseDate = (string)($course->start_date);
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $courseDate)){
-            $dateStart = Carbon::createFromFormat('Y-m-d', $courseDate)->format('d/m/Y');
-            $ds   = Carbon::createFromFormat('Y-m-d', $courseDate);
-        }
-        elseif (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $courseDate)) {
-            $dateStart = $courseDate;  
-            $ds   = Carbon::createFromFormat('d/m/Y', $courseDate);
-        }
-        else {
-            $dateStart = Carbon::parse($courseDate)->format('d/m/Y');
-            $ds   = Carbon::parse($courseDate);
-        }
-        $ds->locale('es');
-        $start_date = $ds->translatedFormat('d \de\ F \de\ Y');
-
-        // Snapshot inmutable de la emisión
-        $course->load('tutors');
-        $tutores = $course->tutors->map(fn($t) => [
-            'name'      => $t->name,
-            'signature' => $t->signature,
-        ])->values()->all();
-
-        $snapshot = [
-            'student' => [
-                'name' => $user->name,
-                'dni'  => $user->dni ?? null,
-            ],
-            'course' => [
-                'title'       => $course->title,
-                'description' => $course->description,
-                'hours'       => $course->hours,
-                'start_date'  => $start_date,
-            ],
-            'tutors'      => $tutores,
-            'issued_date' => now()->toDateString(),
-            'type'        => $type,
-            'assets'      => [
-                'logo_rel_path' => 'images/logoCertificado.png',
-            ],
-            'qr' => [
-                'size'   => 220,
-                'margin' => 4,
-                'color'  => [0, 0, 0],
-                'bg'     => [255, 255, 255],
-            ],
-        ];
-
-        return Certificate::create([
-            'user_id'          => $user->id,
-            'course_id'        => $course->id,
-            'issued_date'      => now()->toDateString(),
-            'certificate_code' => Str::ulid(),
-            'snapshot_data'    => $snapshot,
-            'type'             => $type,
-        ]);
     }
 
     /**

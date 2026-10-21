@@ -5,7 +5,7 @@ import Button from '@/Components/Button';
 
 const empty = {
     title: '', description: '', start_date: '', end_date: '', hours: '',
-    category: '', modality: '', location: '', is_public: false,
+    category: '', modality: '', location: '', is_public: false, moodle_shortname: '',
 };
 
 export default function Form({ course, modalities, categories }) {
@@ -78,6 +78,12 @@ export default function Form({ course, modalities, categories }) {
                             <span className="block text-hospitalgray">Si está marcado, el curso se muestra en la página pública /cursos.</span>
                         </span>
                     </label>
+                </div>
+                <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+                    <h2 className="text-sm font-semibold text-gray-900">Moodle</h2>
+                    <Field label="Nombre corto del curso en Moodle" placeholder="Ej: RCP-2026" className="sm:w-1/2"
+                        hint="Se usa para inscribir a los alumnos al subirlos a Moodle. Copialo de la configuración del curso en Moodle."
+                        {...bind('moodle_shortname')} />
                 </div>
 
                 <div className="flex items-center justify-end gap-2">

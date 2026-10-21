@@ -85,7 +85,7 @@ class CourseController extends Controller
         return Inertia::render('Courses/Form', [
             'course' => $course?->only([
                 'id', 'title', 'description', 'start_date', 'end_date',
-                'hours', 'category', 'modality', 'location', 'is_public',
+                'hours', 'category', 'modality', 'location', 'is_public', 'moodle_shortname'
             ]),
             'modalities' => Course::MODALITIES,
             'categories' => Course::whereNotNull('category')->distinct()->orderBy('category')->pluck('category'),
@@ -104,6 +104,7 @@ class CourseController extends Controller
             'modality'    => ['nullable', Rule::in(array_keys(Course::MODALITIES))],
             'location'    => ['nullable', 'string', 'max:255'],
             'is_public'   => ['boolean'],
+            'moodle_shortname' => ['nullable', 'string', 'max:100'],
         ];
     }
 }

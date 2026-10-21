@@ -11,6 +11,7 @@ use App\Http\Controllers\PublicCourseController;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\MoodleController;
 
 /*
 |--------------------------------------------------------------------------
@@ -75,6 +76,14 @@ Route::middleware(['auth', 'role:admin'])
             ->name('users.import.store');
         // Acciones extra coherentes con kebab-case
         Route::post('users/{user}/assign-role', [AdminUserController::class, 'assignRole'])->name('users.assign-role');
+
+        // Moodle: exportar alumnos e importar aprobados
+        Route::get('/courses/{course}/moodle/export', [MoodleController::class, 'export'])->name('courses.moodle.export');
+        Route::get('/courses/{course}/moodle', [MoodleController::class, 'create'])->name('courses.moodle');
+        Route::post('/courses/{course}/moodle/preview', [MoodleController::class, 'preview'])->name('courses.moodle.preview');
+        Route::delete('/courses/{course}/moodle/preview', [MoodleController::class, 'cancel'])->name('courses.moodle.cancel');
+        Route::post('/courses/{course}/moodle/confirm', [MoodleController::class, 'confirm'])->name('courses.moodle.confirm');
+
     });
   
     Route::middleware(['auth','role:tutor'])->group(function () {

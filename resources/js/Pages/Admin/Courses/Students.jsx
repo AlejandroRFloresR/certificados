@@ -73,6 +73,12 @@ export default function Students({ course, students, types }) {
                     <Link href={route('admin.courses.tutors.edit', course.id)}>
                         <Button type="button" variant="secondary">Asignar tutores</Button>
                     </Link>
+                    <a href={route('admin.courses.moodle.export', course.id)}>
+                        <Button type="button" variant="secondary">Exportar para Moodle</Button>
+                    </a>
+                    <Link href={route('admin.courses.moodle', course.id)}>
+                        <Button type="button" variant="secondary">Importar aprobados de Moodle</Button>
+                    </Link>
                 </div>
             }
         >
