@@ -24,23 +24,18 @@ class PublicCourseController extends Controller
         $enrolledIds = $user ? $user->courses()->pluck('courses.id')->all() : [];
 
         $courses = Course::public()
-            ->with('tutors.user')
+            ->with('category')
             ->get()
             ->map(fn (Course $course) => [
                 'id'          => $course->id,
                 'title'       => $course->title,
                 'description' => $course->description,
-                'hours'       => $course->hours,
-                'category'    => $course->category,
+                'category'    => $course->category?->name,
                 'modality'    => $course->modality,
                 'location'    => $course->location,
                 'start_date'  => $course->start_date,
                 'end_date'    => $course->end_date,
                 'status'      => $course->status,
-                'tutors'      => $course->tutors
-                    ->map(fn ($tutor) => optional($tutor->user)->name ?? $tutor->name)
-                    ->filter()
-                    ->values(),
                 'enrolled'    => in_array($course->id, $enrolledIds),
                 'enroll_url'  => route('courses.enroll', $course->id),
             ])

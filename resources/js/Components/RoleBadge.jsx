@@ -1,8 +1,7 @@
-export const ROLE_LABELS = { admin: 'Administrador', tutor: 'Tutor', user: 'Usuario' };
+export const ROLE_LABELS = { admin: 'Administrador', user: 'Usuario' };
 
 const COLORS = {
     admin: 'bg-hospitalblue/10 text-hospitalblue',
-    tutor: 'bg-hospitalbrown/15 text-[#7a5a2b]',
     user:  'bg-gray-100 text-gray-700',
 };
 

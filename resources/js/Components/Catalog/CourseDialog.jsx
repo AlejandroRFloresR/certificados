@@ -3,7 +3,7 @@ import { StatusBadge } from './CourseCard';
 import { formatRange } from './utils';
 import { router } from '@inertiajs/react';
 
-import { CalendarIcon, CheckIcon, ClockIcon, CloseIcon, MonitorIcon, PinIcon, UserIcon } from './Icons';
+import { CalendarIcon, CheckIcon, CloseIcon, MonitorIcon, PinIcon } from './Icons';
 
 function Detail({ icon: Icon, label, children }) {
     return (
@@ -124,20 +124,10 @@ export default function CourseDialog({ course, modalities, onClose, ...authProps
                             <Detail icon={CalendarIcon} label="Fechas">
                                 <span className="tabular-nums">{formatRange(course.start_date, course.end_date)}</span>
                             </Detail>
-                            {course.hours && (
-                                <Detail icon={ClockIcon} label="Carga horaria">
-                                    <span className="tabular-nums">{course.hours} horas</span>
-                                </Detail>
-                            )}
                             {modality && (
                                 <Detail icon={course.modality === 'virtual' ? MonitorIcon : PinIcon} label="Modalidad">
                                     {modality}
                                     {course.location && <span className="block text-hospitalgray">{course.location}</span>}
-                                </Detail>
-                            )}
-                            {course.tutors.length > 0 && (
-                                <Detail icon={UserIcon} label={course.tutors.length > 1 ? 'Docentes' : 'Docente'}>
-                                    {course.tutors.join(', ')}
                                 </Detail>
                             )}
                         </dl>

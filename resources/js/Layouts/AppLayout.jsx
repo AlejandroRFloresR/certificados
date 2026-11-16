@@ -2,23 +2,25 @@ import { useState } from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import NavLink from '@/Components/NavLink';
 import Flash from '@/Components/Flash';
+import ConfirmHost from '@/Components/ConfirmDialog';
 
 export default function AppLayout({ title, actions, children }) {
     const { auth, imagesUrl } = usePage().props;
     const isAdmin = auth.user?.roles.includes('admin');
-    const isTutor = auth.user?.roles.includes('tutor');
     const [menuOpen, setMenuOpen] = useState(false);
     const [userOpen, setUserOpen] = useState(false);
 
-    // Un solo lugar donde se definen los links: se usan en escritorio y en móvil
-     const links = [
-        { label: 'Mis cursos',        href: route('dashboard'),     active: route().current('dashboard')},
-        { label: 'Listado de Cursos', href: route('courses.index'), active: route().current('courses.*')},
-        ...(isAdmin ? [
-            { label: 'Tutores',  href: route('tutors.index'),      active: route().current('tutors.*')},
-            { label: 'Usuarios', href: route('admin.users.index'), active: route().current('admin.users.*')},
-        ] : []),
-    ];
+    // Un solo lugar donde se definen los links: se usan en escritorio y en móvil.
+    // El alumno tiene su inicio; el admin gestiona cursos y usuarios.
+    const links = isAdmin
+        ? [
+            { label: 'Cursos',   href: route('courses.index'),     active: route().current('courses.*') || route().current('admin.courses.*') },
+            { label: 'Usuarios', href: route('admin.users.index'), active: route().current('admin.users.*') },
+            { label: 'Firmantes', href: route('admin.signers.index'), active: route().current('admin.signers.*') },
+        ]
+        : [
+            { label: 'Inicio', href: route('dashboard'), active: route().current('dashboard') },
+        ];
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -57,11 +59,6 @@ export default function AppLayout({ title, actions, children }) {
                                     <Link href={route('profile.edit')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
                                         Perfil
                                     </Link>
-                        {isTutor && (
-                            <Link href={route('tutors.me.signature.edit')} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                                Mi firma
-                            </Link>
-                        )}
                                     <Link href={route('logout')} method="post" as="button"
                                           className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
                                         Cerrar sesión
@@ -103,9 +100,6 @@ export default function AppLayout({ title, actions, children }) {
                             <p className="px-3 text-sm font-medium text-white">{auth.user?.name}</p>
                             <p className="px-3 text-xs text-white/60">{auth.user?.email}</p>
                             <Link href={route('profile.edit')} className="mt-2 block rounded-md px-3 py-2 text-sm text-white/80">Perfil</Link>
-                        {isTutor && (
-                            <Link href={route('tutors.me.signature.edit')} className="block rounded-md px-3 py-2 text-sm text-white/80">Mi firma</Link>
-                        )}
                             <Link href={route('logout')} method="post" as="button"
                                   className="block w-full rounded-md px-3 py-2 text-left text-sm text-white/80">Cerrar sesión</Link>
                         </div>
@@ -126,6 +120,8 @@ export default function AppLayout({ title, actions, children }) {
                 <Flash />
                 {children}
             </main>
+
+            <ConfirmHost />
         </div>
     );
 }

@@ -6,6 +6,8 @@ use App\Models\Certificate;
 use App\Models\Course;
 use App\Models\User;
 use Carbon\Carbon;
+use App\Jobs\SendCertificateEmail;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class CertificateIssuer
@@ -14,9 +16,11 @@ class CertificateIssuer
      * Crea el certificado si no existe para (user, course).
      * Si existe y es del mismo tipo, lo devuelve.
      *
+     * Un certificado nuevo se envía por correo a su titular ($notify), con la encuesta.
+     *
      * @throws CertificateTypeConflict si ya existe uno de otro tipo
      */
-    public function issue(User $user, Course $course, string $type): Certificate
+    public function issue(User $user, Course $course, string $type, bool $notify = true): Certificate
     {
         $existing = Certificate::where('user_id', $user->id)
             ->where('course_id', $course->id)
@@ -41,12 +45,6 @@ class CertificateIssuer
         $start_date = $ds->translatedFormat('d \de\ F \de\ Y');
 
         // Snapshot inmutable de la emisión
-        $course->loadMissing('tutors');
-        $tutores = $course->tutors->map(fn ($t) => [
-            'name'      => $t->name,
-            'signature' => $t->signature,
-        ])->values()->all();
-
         $snapshot = [
             'student' => [
                 'name' => $user->name,
@@ -58,7 +56,13 @@ class CertificateIssuer
                 'hours'       => $course->hours,
                 'start_date'  => $start_date,
             ],
-            'tutors'      => $tutores,
+            // Firmantes del curso al momento de emitir (ruta de la firma incluida):
+            // si después cambian, este certificado sigue mostrando los de hoy
+            'signers'     => $course->signers()->get()->map(fn ($s) => [
+                'name'      => $s->name,
+                'position'  => $s->position,
+                'signature' => $s->signature,
+            ])->values()->all(),
             'issued_date' => now()->toDateString(),
             'type'        => $type,
             'assets'      => [
@@ -72,13 +76,21 @@ class CertificateIssuer
             ],
         ];
 
-        return Certificate::create([
+        $certificate = Certificate::create([
             'user_id'          => $user->id,
             'course_id'        => $course->id,
             'issued_date'      => now()->toDateString(),
             'certificate_code' => Str::ulid(),
+            'survey_token'     => Certificate::takesSurvey($type) ? Str::random(40) : null,
             'snapshot_data'    => $snapshot,
             'type'             => $type,
         ]);
+
+        // Recién cuando la emisión quedó guardada (si se está dentro de una transacción)
+        if ($notify) {
+            DB::afterCommit(fn () => SendCertificateEmail::dispatch($certificate->id));
+        }
+
+        return $certificate;
     }
 }

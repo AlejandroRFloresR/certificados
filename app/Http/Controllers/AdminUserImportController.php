@@ -22,7 +22,7 @@ class AdminUserImportController extends Controller
     {
         $request->validate([
             'file'             => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'], // 10MB
-            'default_role'     => ['nullable', 'in:admin,tutor,user'],
+            'default_role'     => ['nullable', 'in:admin,user'],
             'enroll_course_id' => ['nullable', 'exists:courses,id'],
         ]);
 

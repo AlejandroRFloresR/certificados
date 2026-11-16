@@ -1,9 +1,15 @@
 import { useMemo, useState } from 'react';
-import { Link, router, useForm } from '@inertiajs/react';
+import { router, useForm, usePage } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
-import Field from '@/Components/Field';
+import TextField from '@/Components/Form/TextField';
+import FileDrop from '@/Components/Form/FileDrop';
+import RadioCards from '@/Components/Form/RadioCards';
+import Checkbox from '@/Components/Form/Checkbox';
+import { focusFirstError } from '@/Components/Form/useUnsavedChanges';
 import Button from '@/Components/Button';
 import { CERTIFICATE_TYPES } from '@/Components/TypeBadge';
+import CourseHeader from '@/Components/CourseHeader';
+import { confirmDialog } from '@/Components/ConfirmDialog';
 
 const STATUS = {
     issue:            { label: 'Se emite',                 className: 'bg-green-100 text-green-800' },
@@ -15,54 +21,109 @@ const STATUS = {
 };
 const ACTIONABLE = ['issue', 'enroll_and_issue'];
 
-function UploadForm({ course, types }) {
-    const form = useForm({ file: null, type: 'aprobado', min_grade: '' });
+const TYPE_DESCRIPTIONS = {
+    aprobado: 'Cumplió la evaluación',
+    asistio:  'Sin evaluación',
+    dicto:    'Docente del curso',
+};
+
+function StepCard({ number, title, children }) {
+    return (
+        <section aria-labelledby={`paso-${number}`} className="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+            <div className="flex items-center gap-3">
+                <span aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-full bg-hospitalblue/10 text-sm font-bold text-hospitalblue">
+                    {number}
+                </span>
+                <h2 id={`paso-${number}`} className="text-base font-bold text-gray-900">{title}</h2>
+            </div>
+            {children}
+        </section>
+    );
+}
+
+/** Paso 1: pide el nombre corto de Moodle y descarga el CSV (el valor se recuerda para la próxima vez) */
+function ExportForm({ course, exportable }) {
+    const { errors } = usePage().props;
+    const [shortname, setShortname] = useState(course.moodle_shortname ?? '');
+
+    const download = (e) => {
+        e.preventDefault();
+        // Descarga de archivo: navegación normal del navegador, no Inertia
+        window.location.href = route('admin.courses.moodle.export', { course: course.id, shortname: shortname.trim() });
+    };
+
+    if (exportable === 0) {
+        return <p className="mt-auto text-sm text-hospitalgray">No hay alumnos para exportar todavía.</p>;
+    }
+
+    return (
+        <form onSubmit={download} noValidate className="mt-auto space-y-4">
+            <TextField id="shortname" label="Nombre corto del curso en Moodle" required maxLength={100}
+                       placeholder="Ej: RCP-2026"
+                       hint="Copialo de la configuración del curso en Moodle. Con él, Moodle inscribe a los alumnos en ese curso."
+                       value={shortname} onChange={setShortname} error={errors.shortname} />
+            <Button disabled={!shortname.trim()} className="min-h-[44px] gap-2">
+                <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 4v11m0 0l-4-4m4 4l4-4M5 19h14" />
+                </svg>
+                Descargar CSV para Moodle
+            </Button>
+        </form>
+    );
+}
+
+function Steps({ course, exportable, types }) {
+    const form = useForm({ file: null, type: types.includes('aprobado') ? 'aprobado' : types[0], min_grade: '' });
+    const skipped = course.students - exportable;
 
     const submit = (e) => {
         e.preventDefault();
-        form.post(route('admin.courses.moodle.preview', course.id), { forceFormData: true });
+        form.post(route('admin.courses.moodle.preview', course.id), {
+            forceFormData: true,
+            preserveScroll: true,
+            onError: focusFirstError,
+        });
     };
 
     return (
-        <div className="mx-auto max-w-2xl space-y-6">
-            <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
-                <p className="font-semibold">Cómo obtener el archivo en Moodle</p>
-                <ol className="mt-2 list-decimal space-y-1 pl-5">
-                    <li>Entrá al curso → <strong>Calificaciones</strong> → <strong>Exportar</strong>.</li>
-                    <li>Elegí <strong>Hoja de cálculo Excel</strong> o <strong>Archivo de texto plano</strong>.</li>
-                    <li>Si querés filtrar por nota, incluí el <strong>Total del curso</strong>.</li>
-                    <li>Si querés subir solo a los aprobados, filtralos en el Excel antes de subirlo y dejá la nota mínima vacía.</li>
-                </ol>
+        <div className="space-y-5">
+            <div className="grid gap-5 lg:grid-cols-2">
+                <StepCard number={1} title="Subir los alumnos a Moodle">
+                    <p className="text-sm leading-relaxed text-gray-700">
+                        Descargá el CSV con {exportable === 1 ? 'el alumno inscripto' : `los ${exportable} alumnos inscriptos`} y cargalo en Moodle desde{' '}
+                        <strong>Administración del sitio › Usuarios › Subir usuarios</strong>. El DNI queda como usuario y como "Número de ID".
+                    </p>
+                    {skipped > 0 && (
+                        <p className="text-sm text-hospitalgray">
+                            {skipped === 1 ? '1 alumno sin email no se incluye.' : `${skipped} alumnos sin email no se incluyen.`}
+                        </p>
+                    )}
+                    <ExportForm course={course} exportable={exportable} />
+                </StepCard>
+
+                <StepCard number={2} title="Emitir certificados a los aprobados">
+                    <p className="text-sm leading-relaxed text-gray-700">
+                        Al terminar el curso, exportá las calificaciones desde Moodle (<strong>Calificaciones › Exportar</strong>, en Excel o texto plano)
+                        y subí el archivo. Vas a ver una vista previa antes de emitir.
+                    </p>
+                    <form onSubmit={submit} noValidate className="space-y-5">
+                        <FileDrop id="file" label="Archivo de calificaciones" required file={form.data.file}
+                                  onChange={(f) => form.setData('file', f)}
+                                  accept=".xlsx,.xls,.csv" acceptLabel=".xlsx, .xls o .csv · hasta 10 MB"
+                                  progress={form.progress} error={form.errors.file} />
+                        <RadioCards id="type" label="Tipo de certificado" required
+                                    options={types.map((t) => ({ value: t, label: CERTIFICATE_TYPES[t]?.label ?? t, description: TYPE_DESCRIPTIONS[t] }))}
+                                    value={form.data.type} onChange={(v) => form.setData('type', v)} error={form.errors.type} />
+                        <TextField id="min_grade" type="number" step="0.01" min="0" label="Nota mínima" className="sm:w-1/2"
+                                   placeholder="Ej: 60" hint="Vacía: todos los del archivo. Se compara con el total del curso."
+                                   value={form.data.min_grade} onChange={(v) => form.setData('min_grade', v)}
+                                   error={form.errors.min_grade} />
+                        <Button disabled={form.processing || !form.data.file} className="min-h-[44px]">
+                            {form.processing ? 'Leyendo archivo…' : 'Ver vista previa'}
+                        </Button>
+                    </form>
+                </StepCard>
             </div>
-
-            <form onSubmit={submit} className="space-y-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
-                <div>
-                    <label htmlFor="file" className="block text-sm font-medium text-gray-700">Archivo de calificaciones (.xlsx, .xls o .csv)</label>
-                    <input id="file" type="file" accept=".xlsx,.xls,.csv" required
-                           onChange={(e) => form.setData('file', e.target.files[0] ?? null)}
-                           className="mt-1 block w-full text-sm text-gray-700 file:mr-3 file:rounded-lg file:border-0 file:bg-hospitalblue/10 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-hospitalblue hover:file:bg-hospitalblue/20" />
-                    {form.errors.file && <p className="mt-1 text-xs text-red-600">{form.errors.file}</p>}
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                    <Field as="select" id="type" label="Tipo de certificado"
-                           value={form.data.type} onChange={(e) => form.setData('type', e.target.value)}
-                           error={form.errors.type}>
-                        {types.map((t) => <option key={t} value={t}>{CERTIFICATE_TYPES[t]?.label ?? t}</option>)}
-                    </Field>
-                    <Field id="min_grade" type="number" step="0.01" min="0" label="Nota mínima para aprobar (opcional)"
-                           placeholder="Ej: 60" hint="Vacío = se consideran aprobados todos los del archivo."
-                           value={form.data.min_grade} onChange={(e) => form.setData('min_grade', e.target.value)}
-                           error={form.errors.min_grade} />
-                </div>
-
-                <div className="flex items-center justify-end gap-2">
-                    <Link href={route('admin.courses.users', course.id)}>
-                        <Button type="button" variant="secondary">Volver</Button>
-                    </Link>
-                    <Button disabled={form.processing}>{form.processing ? 'Leyendo archivo…' : 'Ver vista previa'}</Button>
-                </div>
-            </form>
         </div>
     );
 }
@@ -71,6 +132,7 @@ function Preview({ course, preview }) {
     const actionable = useMemo(() => preview.rows.filter((r) => ACTIONABLE.includes(r.status)), [preview]);
     const [selected, setSelected] = useState(() => new Set(actionable.map((r) => r.user_id)));
     const [sending, setSending] = useState(false);
+    const [notify, setNotify] = useState(true);
 
     const counts = useMemo(() => preview.rows.reduce((acc, r) => ({ ...acc, [r.status]: (acc[r.status] ?? 0) + 1 }), {}), [preview]);
     const enrollCount = actionable.filter((r) => r.status === 'enroll_and_issue' && selected.has(r.user_id)).length;
@@ -81,12 +143,20 @@ function Preview({ course, preview }) {
         return next;
     });
 
-    const confirmIssue = () => {
-        const msg = `Se van a emitir ${selected.size} certificados de tipo "${CERTIFICATE_TYPES[preview.type]?.label}"`
-            + (enrollCount ? ` y se van a inscribir ${enrollCount} alumnos al curso` : '') + '. ¿Continuar?';
-        if (!confirm(msg)) return;
+    const confirmIssue = async () => {
+        const one = selected.size === 1;
+        const ok = await confirmDialog({
+            title: `¿Emitir ${selected.size} ${one ? 'certificado' : 'certificados'}?`,
+            message: [
+                `Tipo: ${CERTIFICATE_TYPES[preview.type]?.label}.`
+                    + (enrollCount ? ` Además se ${enrollCount === 1 ? 'inscribe 1 alumno' : `inscriben ${enrollCount} alumnos`} al curso.` : ''),
+                notify ? 'Cada certificado se envía por correo.' : 'No se envían por correo.',
+            ],
+            confirmLabel: 'Emitir',
+        });
+        if (!ok) return;
 
-        router.post(route('admin.courses.moodle.confirm', course.id), { user_ids: [...selected] }, {
+        router.post(route('admin.courses.moodle.confirm', course.id), { user_ids: [...selected], notify }, {
             onStart: () => setSending(true),
             onFinish: () => setSending(false),
         });
@@ -169,7 +239,9 @@ function Preview({ course, preview }) {
                 </p>
             )}
 
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
+                <Checkbox id="moodle-notify" label="Enviar cada certificado por correo" checked={notify} onChange={setNotify} />
+                <span className="flex-1" />
                 <Button type="button" variant="secondary" onClick={cancel}>Cancelar</Button>
                 <Button type="button" onClick={confirmIssue} disabled={sending || selected.size === 0}>
                     {sending ? 'Emitiendo…' : `Emitir ${selected.size} certificados`}
@@ -179,10 +251,15 @@ function Preview({ course, preview }) {
     );
 }
 
-export default function MoodleImport({ course, types, preview }) {
+export default function MoodleImport({ course, exportable, types, preview }) {
     return (
-        <AppLayout title={`Importar aprobados de Moodle — ${course.title}`}>
-            {preview ? <Preview course={course} preview={preview} /> : <UploadForm course={course} types={types} />}
+        <AppLayout>
+            <CourseHeader course={course} tab="moodle" />
+            <div className="mt-6">
+                {preview
+                    ? <Preview course={course} preview={preview} />
+                    : <Steps course={course} exportable={exportable} types={types} />}
+            </div>
         </AppLayout>
     );
 }

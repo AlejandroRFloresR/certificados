@@ -2,13 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\SendCertificateEmail;
+use App\Mail\CertificateIssuedMail;
 use App\Models\Course;
 use App\Exports\CourseUsersExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Http\Request;
 use App\Models\User;
-use App\Models\Tutor;
 use App\Models\Certificate;
+use App\Services\CertificateIssuer;
+use App\Services\CertificateTypeConflict;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -22,13 +27,12 @@ class AdminController extends Controller
     }
      public function courseUsers(Course $course): Response
     {
-        $course->load('tutors.user');
-
         // Alumnos del curso + solo su certificado de ESTE curso
         $students = $course->users()
             ->with(['certificates' => fn ($q) => $q
                 ->where('course_id', $course->id)
-                ->select('id', 'user_id', 'course_id', 'certificate_code', 'type', 'snapshot_data')])
+                ->select('id', 'user_id', 'course_id', 'certificate_code', 'type', 'snapshot_data', 'survey_token', 'emailed_at', 'email_error')
+                ->withExists('surveyResponse')])
             ->orderBy('name')
             ->get()
             ->map(function ($user) {
@@ -42,17 +46,17 @@ class AdminController extends Controller
                     'enrolled_at' => $user->pivot->created_at?->format('d/m/Y'),
                     'certificate' => $cert ? [
                         'type'         => $cert->type ?? data_get($cert->snapshot_data, 'type'),
+                        'id'           => $cert->id,
                         'download_url' => route('certificates.download', $cert->certificate_code),
+                        'emailed_at'   => $cert->emailed_at?->format('d/m/Y H:i'),
+                        'email_error'  => $cert->email_error,
+                        'survey'       => $cert->survey_token ? ($cert->survey_response_exists ? 'answered' : 'pending') : null,
                     ] : null,
                 ];
             });
 
         return Inertia::render('Admin/Courses/Students', [
-            'course' => [
-                'id'     => $course->id,
-                'title'  => $course->title,
-                'tutors' => $course->tutors->map(fn ($t) => optional($t->user)->name ?? $t->name)->values(),
-            ],
+            'course'   => $course->adminSummary(),
             'students' => $students,
             'types'    => Certificate::TYPES,
         ]);
@@ -98,58 +102,69 @@ class AdminController extends Controller
         return redirect()
             ->route('admin.courses.users', $course)
             ->with('success', 'Alumnos del curso actualizados.');
-    
-    }
-    public function editCourseTutors(Course $course, Request $request): Response
-    {
-        $q = trim((string) $request->query('q', ''));
 
-        $items = Tutor::query()
-            ->with('user:id,name,email')
-            ->when($q !== '', fn ($query) => $query->where(fn ($w) => $w
-                ->where('name', 'like', "%{$q}%")
-                ->orWhereHas('user', fn ($u) => $u
-                    ->where('name', 'like', "%{$q}%")
-                    ->orWhere('email', 'like', "%{$q}%"))))
-            ->orderBy('name')
-            ->limit(300)
-            ->get()
-            ->map(fn ($t) => [
-                'id'    => $t->id,
-                'name'  => $t->user->name ?? $t->name,
-                'email' => $t->user->email ?? null,
-            ]);
-
-        return Inertia::render('Admin/Courses/Assign', [
-            'mode'     => 'tutors',
-            'course'   => $course->only('id', 'title'),
-            'items'    => $items,
-            'selected' => $course->tutors()->pluck('tutors.id'),
-            'q'        => $q,
-        ]);
     }
-    public function updateCourseTutors(Course $course, Request $request)
+
+    /** Emite el mismo tipo de certificado a varios alumnos del curso a la vez */
+    public function issueCertificates(Course $course, Request $request, CertificateIssuer $issuer)
     {
         $data = $request->validate([
-            'tutors'   => ['nullable','array','max:3'], // 💡 valida cantidad
-            'tutors.*' => ['integer','exists:tutors,id'],
-        ], [
-            'tutors.max' => 'Cada curso puede tener como máximo 3 tutores.',
-        ]);
+            'user_ids'   => ['required', 'array', 'min:1'],
+            'user_ids.*' => ['integer'],
+            'type'       => ['required', Rule::in(Certificate::TYPES)],
+            'notify'     => ['sometimes', 'boolean'],
+        ], ['user_ids.required' => 'Seleccioná al menos un alumno.']);
+        $notify = $request->boolean('notify', true);
 
-        $ids = $data['tutors'] ?? [];
+        // Solo alumnos inscriptos en ESTE curso y que todavía no tienen certificado
+        $users = $course->users()
+            ->whereIn('users.id', $data['user_ids'])
+            ->whereDoesntHave('certificates', fn ($q) => $q->where('course_id', $course->id))
+            ->get();
 
-        // Seguridad extra: por si alguien burla el front
-        if (count($ids) > 3) {
-            return back()->withErrors(['tutors' => 'Máximo 3 tutores por curso.'])->withInput();
+        $issued = 0;
+        $conflicts = [];
+
+        foreach ($users as $user) {
+            try {
+                DB::transaction(fn () => $issuer->issue($user, $course, $data['type'], $notify));
+                $issued++;
+            } catch (CertificateTypeConflict) {
+                // Alguien emitió otro tipo justo entre la carga de la página y este pedido
+                $conflicts[] = $user->name;
+            }
         }
 
-        // Sincronizar pivot
-        $course->tutors()->sync($ids);
+        $label = ['asistio' => 'Asistió', 'dicto' => 'Dictó', 'aprobado' => 'Aprobado'][$data['type']];
+        $redirect = redirect()->route('admin.courses.users', $course)
+            ->with('success', $issued === 1
+                ? "Se emitió 1 certificado de tipo \"{$label}\"."
+                : "Se emitieron {$issued} certificados de tipo \"{$label}\".");
 
-        return redirect()
-            ->route('admin.courses.users', $course)
-            ->with('success', 'Tutores del curso actualizados (máx. 3).');
+        return $conflicts
+            ? $redirect->with('error', 'No se emitió para: ' . implode(', ', $conflicts) . ' (ya tienen un certificado de otro tipo).')
+            : $redirect;
     }
 
+    /** Reenvía el certificado por correo a su titular */
+    public function resendCertificate(Certificate $certificate)
+    {
+        abort_unless($certificate->user, 404);
+
+        SendCertificateEmail::dispatchSync($certificate->id);
+        $certificate->refresh();
+
+        return back()->with(
+            $certificate->email_error ? 'error' : 'success',
+            $certificate->email_error
+                ? "No se pudo enviar a {$certificate->user->email}: {$certificate->email_error}"
+                : "Certificado enviado a {$certificate->user->email}."
+        );
+    }
+
+    /** Muestra el correo tal como lo recibe el alumno (sin enviarlo) */
+    public function previewCertificateEmail(Certificate $certificate)
+    {
+        return new CertificateIssuedMail($certificate);
+    }
 }

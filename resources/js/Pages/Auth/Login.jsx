@@ -1,7 +1,10 @@
 import { Link, useForm, usePage } from '@inertiajs/react';
 import AuthLayout from '@/Layouts/AuthLayout';
-import Field from '@/Components/Field';
-import Button from '@/Components/Button';
+import TextField from '@/Components/Form/TextField';
+import PasswordField from '@/Components/Form/PasswordField';
+import Checkbox from '@/Components/Form/Checkbox';
+import SubmitButton from '@/Components/Form/SubmitButton';
+import { focusFirstError } from '@/Components/Form/useUnsavedChanges';
 
 export default function Login() {
     const { flash } = usePage().props;
@@ -10,6 +13,7 @@ export default function Login() {
     const submit = (e) => {
         e.preventDefault();
         form.post(route('login'), {
+            onError: focusFirstError,
             onFinish: () => form.reset('password'), // no dejar la contraseña cargada si falla
         });
     };
@@ -22,28 +26,14 @@ export default function Login() {
                 </div>
             )}
 
-            <form onSubmit={submit} className="space-y-4">
-                <Field id="email" type="email" label="Email" autoComplete="username" autoFocus required
-                       value={form.data.email}
-                       onChange={(e) => form.setData('email', e.target.value)}
-                       error={form.errors.email} />
-
-                <Field id="password" type="password" label="Contraseña" autoComplete="current-password" required
-                       value={form.data.password}
-                       onChange={(e) => form.setData('password', e.target.value)}
-                       error={form.errors.password} />
-
-                <label className="flex items-center gap-2 text-sm text-gray-600">
-                    <input type="checkbox"
-                           checked={form.data.remember}
-                           onChange={(e) => form.setData('remember', e.target.checked)}
-                           className="rounded border-gray-300 text-hospitalblue focus:ring-hospitalblue" />
-                    Recordarme
-                </label>
-
-                <Button className="w-full" disabled={form.processing}>
-                    {form.processing ? 'Ingresando…' : 'Ingresar'}
-                </Button>
+            <form onSubmit={submit} noValidate className="space-y-4">
+                <TextField id="email" type="email" label="Email" required autoComplete="username" autoFocus
+                           value={form.data.email} onChange={(v) => form.setData('email', v)} error={form.errors.email} />
+                <PasswordField id="password" label="Contraseña" required autoComplete="current-password"
+                               value={form.data.password} onChange={(v) => form.setData('password', v)} error={form.errors.password} />
+                <Checkbox id="remember" label="Recordarme en este equipo"
+                          checked={form.data.remember} onChange={(v) => form.setData('remember', v)} />
+                <SubmitButton processing={form.processing} processingLabel="Ingresando…">Ingresar</SubmitButton>
             </form>
 
             <p className="mt-6 text-center text-sm text-hospitalgray">

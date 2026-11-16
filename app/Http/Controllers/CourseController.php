@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\Course;
+use App\Models\Signer;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -10,29 +12,27 @@ use Inertia\Response;
 
 class CourseController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request)
     {
-        $enrolledIds = $request->user()->courses()->pluck('courses.id')->all();
+        // El listado es la gestión de cursos: el alumno usa su inicio y el catálogo
+        if (!$request->user()->hasRole('admin')) {
+            return redirect()->route('dashboard');
+        }
 
-        $courses = Course::with('tutors.user')
-            ->withCount('users')
+        $courses = Course::with('category')
+            ->withCount(['users', 'certificates' => fn ($q) => $q->whereNotNull('user_id')])
             ->orderBy('start_date', 'desc')
             ->get()
             ->map(fn (Course $course) => [
-                'id'         => $course->id,
-                'title'      => $course->title,
-                'category'   => $course->category,
-                'hours'      => $course->hours,
-                'start_date' => $course->start_date,
-                'end_date'   => $course->end_date,
-                'status'     => $course->status,
-                'is_public'  => $course->is_public,
-                'students'   => $course->users_count,
-                'tutors'     => $course->tutors
-                    ->map(fn ($tutor) => optional($tutor->user)->name ?? $tutor->name)
-                    ->filter()
-                    ->values(),
-                'enrolled'   => in_array($course->id, $enrolledIds),
+                'id'           => $course->id,
+                'title'        => $course->title,
+                'category'     => $course->category?->name,
+                'start_date'   => $course->start_date,
+                'end_date'     => $course->end_date,
+                'status'       => $course->status,
+                'is_public'    => $course->is_public,
+                'students'     => $course->users_count,
+                'certificates' => $course->certificates_count,
             ]);
 
         return Inertia::render('Courses/Index', ['courses' => $courses]);
@@ -45,9 +45,11 @@ class CourseController extends Controller
 
     public function store(Request $request)
     {
-        Course::create($request->validate($this->rules()));
+        [$data, $signers] = $this->validated($request);
+        $course = Course::create($data);
+        $this->syncSigners($course, $signers);
 
-        return redirect()->route('courses.index')->with('success', 'Curso creado correctamente.');
+        return redirect()->route('admin.courses.users', $course)->with('success', 'Curso creado correctamente.');
     }
 
     public function edit($id): Response
@@ -57,9 +59,12 @@ class CourseController extends Controller
 
     public function update(Request $request, $id)
     {
-        Course::findOrFail($id)->update($request->validate($this->rules()));
+        $course = Course::findOrFail($id);
+        [$data, $signers] = $this->validated($request);
+        $course->update($data);
+        $this->syncSigners($course, $signers);
 
-        return redirect()->route('courses.index')->with('success', 'Curso actualizado correctamente.');
+        return redirect()->route('admin.courses.users', $course)->with('success', 'Curso actualizado correctamente.');
     }
 
     public function destroy($id)
@@ -71,6 +76,11 @@ class CourseController extends Controller
 
     public function enroll(Course $course)
     {
+        // Solo cursos publicados en el catálogo y que no terminaron
+        if (!$course->is_public || $course->status === 'finalizado') {
+            return redirect()->back()->with('error', 'Este curso no tiene la inscripción abierta.');
+        }
+
         $user = auth()->user();
         if (!$user->courses->contains($course->id)) {
             $user->courses()->attach($course->id);
@@ -83,28 +93,59 @@ class CourseController extends Controller
     private function form(?Course $course): Response
     {
         return Inertia::render('Courses/Form', [
-            'course' => $course?->only([
-                'id', 'title', 'description', 'start_date', 'end_date',
-                'hours', 'category', 'modality', 'location', 'is_public', 'moodle_shortname'
-            ]),
+            'course' => $course ? [
+                ...$course->only(['id', 'title', 'description', 'start_date', 'end_date', 'modality', 'location', 'is_public']),
+                'category' => $course->category?->name,
+            ] : null,
             'modalities' => Course::MODALITIES,
-            'categories' => Course::whereNotNull('category')->distinct()->orderBy('category')->pluck('category'),
+            'categories' => Category::orderBy('name')->pluck('name'),
+            'signers'    => Signer::orderBy('name')->get()
+                ->map(fn (Signer $s) => $s->only('id', 'name', 'position') + ['signature_url' => $s->signature_url]),
+            'selectedSigners' => $course ? $course->signers->pluck('id') : [],
+            'maxSigners' => Signer::MAX_PER_COURSE,
         ]);
     }
 
-    private function rules(): array
+    /** Guarda qué firmantes lleva el curso, en el orden elegido (null = el pedido no los incluía) */
+    private function syncSigners(Course $course, ?array $ids): void
     {
-        return [
+        if ($ids === null) {
+            return;
+        }
+
+        $course->signers()->sync(
+            collect($ids)->values()->mapWithKeys(fn ($id, $i) => [$id => ['sort_order' => $i]])->all()
+        );
+    }
+
+    /**
+     * Valida todo junto (si algo falla no se guarda nada) y devuelve
+     * [datos del curso, ids de firmantes]. La categoría pasa de nombre a category_id.
+     */
+    private function validated(Request $request): array
+    {
+        $data = $request->validate([
             'title'       => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
+            'description' => ['nullable', 'string', 'max:2000'],
             'start_date'  => ['nullable', 'date'],
             'end_date'    => ['nullable', 'date', 'after_or_equal:start_date'],
-            'hours'       => ['nullable', 'integer', 'min:1', 'max:2000'],
             'category'    => ['nullable', 'string', 'max:100'],
             'modality'    => ['nullable', Rule::in(array_keys(Course::MODALITIES))],
             'location'    => ['nullable', 'string', 'max:255'],
             'is_public'   => ['boolean'],
-            'moodle_shortname' => ['nullable', 'string', 'max:100'],
-        ];
+            'signers'     => ['sometimes', 'array', 'max:' . Signer::MAX_PER_COURSE],
+            'signers.*'   => ['integer', 'distinct', 'exists:signers,id'],
+        ], [
+            'end_date.after_or_equal' => 'No puede ser anterior a la fecha de inicio.',
+            'signers.max'             => 'Un certificado puede llevar como máximo ' . Signer::MAX_PER_COURSE . ' firmas.',
+        ]);
+
+        $signers = $request->has('signers') ? ($data['signers'] ?? []) : null;
+        unset($data['signers']);
+
+        $data['category_id'] = Category::resolve($data['category'] ?? null)?->id;
+        unset($data['category']);
+
+        return [$data, $signers];
     }
 }

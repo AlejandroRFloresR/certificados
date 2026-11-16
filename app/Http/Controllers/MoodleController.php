@@ -23,8 +23,23 @@ class MoodleController extends Controller
     /** Filas que se pueden emitir al confirmar */
     private const ACTIONABLE = ['issue', 'enroll_and_issue'];
 
-    public function export(Course $course)
+    /**
+     * CSV para "Subir usuarios" de Moodle. El nombre corto del curso en Moodle se pide
+     * al exportar (no en el formulario del curso) y se recuerda para la próxima vez.
+     */
+    public function export(Request $request, Course $course)
     {
+        $data = $request->validate([
+            'shortname' => ['required', 'string', 'max:100'],
+        ], [
+            'shortname.required' => 'Ingresá el nombre corto del curso en Moodle.',
+        ]);
+
+        $shortname = trim($data['shortname']);
+        if ($course->moodle_shortname !== $shortname) {
+            $course->update(['moodle_shortname' => $shortname]);
+        }
+
         $filename = 'moodle_' . Str::slug($course->title) . '_' . now()->format('Ymd') . '.csv';
 
         return Excel::download(new MoodleUsersExport($course), $filename, ExcelFormat::CSV);
@@ -32,9 +47,16 @@ class MoodleController extends Controller
 
     public function create(Course $course): Response
     {
+        // Mismo filtro que MoodleUsersExport: Moodle exige DNI (username) y email
+        $exportable = $course->users()
+            ->whereNotNull('dni')->where('dni', '!=', '')
+            ->whereNotNull('email')->where('email', '!=', '')
+            ->count();
+
         return Inertia::render('Admin/Courses/MoodleImport', [
-            'course'  => $course->only('id', 'title', 'moodle_shortname'),
-            'types'   => Certificate::TYPES,
+            'course'     => $course->adminSummary(),
+            'exportable' => $exportable,
+            'types'      => Certificate::TYPES,
             'preview' => session($this->sessionKey($course)),
         ]);
     }
@@ -114,7 +136,9 @@ class MoodleController extends Controller
         $data = $request->validate([
             'user_ids'   => ['required', 'array', 'min:1'],
             'user_ids.*' => ['integer'],
+            'notify'     => ['sometimes', 'boolean'],
         ], ['user_ids.required' => 'Seleccioná al menos un alumno.']);
+        $notify = $request->boolean('notify', true);
 
         // Solo se emite lo que la vista previa marcó como emitible (no se confía en lo que manda el navegador)
         $actionable = collect($preview['rows'])
@@ -123,7 +147,6 @@ class MoodleController extends Controller
             ->only($data['user_ids']);
 
         $users = User::whereIn('id', $actionable->keys())->get();
-        $course->loadMissing('tutors');
 
         $issued = 0;
         $enrolledNow = 0;
@@ -131,12 +154,12 @@ class MoodleController extends Controller
 
         foreach ($users as $user) {
             try {
-                DB::transaction(function () use ($user, $course, $actionable, $issuer, $preview, &$issued, &$enrolledNow) {
+                DB::transaction(function () use ($user, $course, $actionable, $issuer, $preview, $notify, &$issued, &$enrolledNow) {
                     if ($actionable[$user->id]['status'] === 'enroll_and_issue') {
                         $course->users()->syncWithoutDetaching([$user->id]);
                         $enrolledNow++;
                     }
-                    $issuer->issue($user, $course, $preview['type']);
+                    $issuer->issue($user, $course, $preview['type'], $notify);
                     $issued++;
                 });
             } catch (CertificateTypeConflict) {

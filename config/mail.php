@@ -44,6 +44,9 @@ return [
             'password' => env('MAIL_PASSWORD'),
             'timeout' => null,
             'local_domain' => env('MAIL_EHLO_DOMAIN'),
+            // El servidor del hospital ofrece STARTTLS con un certificado que no valida:
+            // con false la conexión va cifrada igual, pero sin verificar ese certificado
+            'verify_peer' => env('MAIL_VERIFY_PEER', true),
         ],
 
         'ses' => [

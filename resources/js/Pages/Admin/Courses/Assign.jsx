@@ -14,16 +14,6 @@ const CONFIG = {
         updateRoute: 'admin.courses.users.update',
         max: null,
     },
-    tutors: {
-        title: 'Asignar tutores',
-        field: 'tutors',
-        noun: ['tutor', 'tutores'],
-        placeholder: 'Buscar tutor por nombre o email',
-        columns: [['name', 'Nombre'], ['email', 'Email']],
-        editRoute: 'admin.courses.tutors.edit',
-        updateRoute: 'admin.courses.tutors.update',
-        max: 3,
-    },
 };
 
 export default function Assign({ mode, course, items, selected: initialSelected, q }) {

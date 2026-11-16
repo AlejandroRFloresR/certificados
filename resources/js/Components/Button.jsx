@@ -1,3 +1,5 @@
+import { forwardRef } from 'react';
+
 const variants = {
     primary:   'bg-hospitalblue text-white hover:bg-hospitalblue-dark',
     secondary: 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50',
@@ -5,11 +7,14 @@ const variants = {
     ghost:     'text-hospitalblue hover:bg-hospitalblue/10',
 };
 
-export default function Button({ variant = 'primary', className = '', ...props }) {
+const Button = forwardRef(function Button({ variant = 'primary', className = '', ...props }, ref) {
     return (
         <button
+            ref={ref}
             {...props}
             className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:opacity-50 ${variants[variant]} ${className}`}
         />
     );
-}
+});
+
+export default Button;

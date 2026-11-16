@@ -19,15 +19,22 @@ class Course extends Model
     {
         return $this->hasMany(Certificate::class);
     }
-    
-    public function tutors()
+
+    public function category()
     {
-        return $this->belongsToMany(Tutor::class);
+        return $this->belongsTo(Category::class);
     }
-    
+
+    /** Firmantes del certificado, en el orden en que se imprimen */
+    public function signers()
+    {
+        return $this->belongsToMany(Signer::class)->withPivot('sort_order')->orderByPivot('sort_order');
+    }
+
     protected $fillable = [
-        'title', 'description', 'start_date', 'end_date', 'hours',
-        'is_public', 'category', 'modality', 'location', 'moodle_shortname',
+        // 'hours' ya no se edita: la columna queda solo para conservar lo cargado antes
+        'title', 'description', 'start_date', 'end_date',
+        'is_public', 'category_id', 'modality', 'location', 'moodle_shortname',
     ];
     protected $casts =[
         'hours'      => 'integer',
@@ -62,5 +69,22 @@ class Course extends Model
             return 'en_curso';
         }
         return 'finalizado';
+    }
+
+    /** Datos de la cabecera de la ficha del curso (pestañas Alumnos y Moodle) */
+    public function adminSummary(): array
+    {
+        return [
+            'id'               => $this->id,
+            'title'            => $this->title,
+            'category'         => $this->category?->name,
+            'modality'         => self::MODALITIES[$this->modality] ?? null,
+            'start_date'       => $this->start_date,
+            'end_date'         => $this->end_date,
+            'status'           => $this->status,
+            'is_public'        => $this->is_public,
+            'moodle_shortname' => $this->moodle_shortname,
+            'students'         => $this->users()->count(),
+        ];
     }
 }

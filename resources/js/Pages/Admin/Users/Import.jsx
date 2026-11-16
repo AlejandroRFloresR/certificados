@@ -1,80 +1,57 @@
-import { useState } from 'react';
-import { Link, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
-import Field from '@/Components/Field';
-import Button from '@/Components/Button';
+import FormSection from '@/Components/Form/FormSection';
+import FileDrop from '@/Components/Form/FileDrop';
+import RadioCards from '@/Components/Form/RadioCards';
+import SelectField from '@/Components/Form/SelectField';
+import FormActions from '@/Components/Form/FormActions';
+import { focusFirstError } from '@/Components/Form/useUnsavedChanges';
 import { ROLE_LABELS } from '@/Components/RoleBadge';
+
+const ROLE_OPTIONS = [
+    { value: 'user',  label: ROLE_LABELS.user,  description: 'Lo habitual para alumnos.' },
+    { value: 'admin', label: ROLE_LABELS.admin, description: 'Acceso completo a la gestión.' },
+];
 
 export default function Import({ courses }) {
     const { flash } = usePage().props;
-    const [inputKey, setInputKey] = useState(0); // para vaciar el <input type="file"> después de importar
 
-    const form = useForm({ file: null, default_role: '', enroll_course_id: '' });
+    // Sin columna "role" en el archivo, el importador usa "user": se muestra ese valor de entrada
+    const form = useForm({ file: null, default_role: 'user', enroll_course_id: '' });
 
     const submit = (e) => {
         e.preventDefault();
         form.post(route('admin.users.import.store'), {
             forceFormData: true,     // necesario para enviar archivos
             preserveScroll: true,
-            onSuccess: () => {
-                form.reset('file');
-                setInputKey((k) => k + 1);
-            },
+            onError: focusFirstError,
+            onSuccess: () => form.reset('file'),
         });
     };
 
     const failures = flash.failures ?? [];
 
     return (
-        <AppLayout title="Importar usuarios">
-            <div className="mx-auto max-w-2xl space-y-6">
-                <form onSubmit={submit} className="space-y-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
-                    <div>
-                        <label htmlFor="file" className="block text-sm font-medium text-gray-700">Archivo (.xlsx, .xls o .csv)</label>
-                        <input key={inputKey} id="file" type="file" accept=".xlsx,.xls,.csv" required
-                               onChange={(e) => form.setData('file', e.target.files[0] ?? null)}
-                               className="mt-1 block w-full text-sm text-gray-700 file:mr-3 file:rounded-lg file:border-0 file:bg-hospitalblue/10 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-hospitalblue hover:file:bg-hospitalblue/20" />
-                        {form.errors.file && <p className="mt-1 text-xs text-red-600">{form.errors.file}</p>}
-                        {form.progress && (
-                            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100">
-                                <div className="h-full bg-hospitalblue transition-all" style={{ width: `${form.progress.percentage}%` }} />
-                            </div>
-                        )}
-                    </div>
+        <AppLayout>
+            <Head title="Importar usuarios" />
 
-                    <div className="grid gap-4 sm:grid-cols-2">
-                        <Field as="select" id="default_role" label="Rol por defecto"
-                               hint="Se usa si el archivo no trae la columna role."
-                               value={form.data.default_role}
-                               onChange={(e) => form.setData('default_role', e.target.value)}
-                               error={form.errors.default_role}>
-                            <option value="">— Ninguno —</option>
-                            {['user', 'tutor', 'admin'].map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
-                        </Field>
-
-                        <Field as="select" id="enroll_course_id" label="Inscribir a un curso (opcional)"
-                               hint="También podés usar la columna course_ids en el archivo."
-                               value={form.data.enroll_course_id}
-                               onChange={(e) => form.setData('enroll_course_id', e.target.value)}
-                               error={form.errors.enroll_course_id}>
-                            <option value="">— Ninguno —</option>
-                            {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
-                        </Field>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-2">
-                        <Link href={route('admin.users.index')}>
-                            <Button type="button" variant="secondary">Volver</Button>
-                        </Link>
-                        <Button disabled={form.processing}>{form.processing ? 'Importando…' : 'Importar'}</Button>
-                    </div>
-                </form>
+            <form onSubmit={submit} noValidate>
+                <Link href={route('admin.users.index')} className="mb-3 inline-flex items-center gap-1.5 py-1.5 text-sm font-semibold text-hospitalblue hover:underline">
+                    <svg aria-hidden="true" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M15 18l-6-6 6-6" />
+                    </svg>
+                    Usuarios
+                </Link>
+                <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">Importar usuarios</h1>
+                <p className="mt-1.5 text-sm text-hospitalgray">
+                    Crea las cuentas desde un Excel. Las personas que ya existen (mismo email) no se duplican.
+                </p>
 
                 {failures.length > 0 && (
-                    <div className="overflow-hidden rounded-xl border border-red-200 bg-white shadow-sm">
-                        <h3 className="border-b border-red-100 bg-red-50 px-5 py-3 text-sm font-semibold text-red-800">
-                            {failures.length} {failures.length === 1 ? 'fila con errores' : 'filas con errores'}
-                        </h3>
+                    <div className="mt-6 overflow-hidden rounded-xl border border-red-200 bg-white shadow-sm">
+                        <h2 className="border-b border-red-100 bg-red-50 px-5 py-3 text-sm font-semibold text-red-800">
+                            {failures.length} {failures.length === 1 ? 'fila no se importó' : 'filas no se importaron'}
+                        </h2>
                         <ul className="divide-y divide-gray-100 text-sm">
                             {failures.map((f, i) => (
                                 <li key={i} className="flex gap-3 px-5 py-2.5">
@@ -85,7 +62,32 @@ export default function Import({ courses }) {
                         </ul>
                     </div>
                 )}
-            </div>
+
+                <div className="mt-8 space-y-8">
+                    <FormSection title="Archivo"
+                                 description="Columnas: nombre, apellido, correo_electronico y dni. Opcionales: telefono, role, password y course_ids (ej. 1|3|5).">
+                        <FileDrop id="file" label="Planilla de usuarios" required file={form.data.file}
+                                  onChange={(f) => form.setData('file', f)}
+                                  accept=".xlsx,.xls,.csv" acceptLabel=".xlsx, .xls o .csv · hasta 10 MB"
+                                  progress={form.progress} error={form.errors.file} />
+                    </FormSection>
+
+                    <FormSection title="Opciones" description="Se aplican a todas las filas del archivo." last>
+                        <RadioCards id="default_role" label="Rol por defecto" required columns={2} options={ROLE_OPTIONS}
+                                    value={form.data.default_role} onChange={(v) => form.setData('default_role', v)}
+                                    error={form.errors.default_role} />
+                        <p className="-mt-2 text-sm text-hospitalgray">Se usa en las filas que no traen la columna "role".</p>
+                        <SelectField id="enroll_course_id" label="Inscribir a un curso" placeholder="No inscribir"
+                                     hint="Además, cada fila puede indicar sus cursos en la columna course_ids."
+                                     options={courses.map((c) => ({ value: c.id, label: c.title }))}
+                                     value={form.data.enroll_course_id} onChange={(v) => form.setData('enroll_course_id', v)}
+                                     error={form.errors.enroll_course_id} />
+                    </FormSection>
+                </div>
+
+                <FormActions form={form} cancelHref={route('admin.users.index')}
+                             submitLabel="Importar" processingLabel="Importando…" />
+            </form>
         </AppLayout>
     );
 }

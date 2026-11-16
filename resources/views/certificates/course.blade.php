@@ -171,6 +171,9 @@
                                     <div style="height:60px;"></div>
                                 @endif
                                 <p style="margin-top:5px;">{{ $t['name'] }}</p>
+                                @if(!empty($t['position']))
+                                    <p style="margin-top:0; font-size:11px;">{{ $t['position'] }}</p>
+                                @endif
                             </div>
                         @endforeach
                     </div>

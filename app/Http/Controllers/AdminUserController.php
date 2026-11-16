@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Tutor;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -20,31 +19,47 @@ class AdminUserController extends Controller
 
     public function index(Request $request): Response
     {
-        $q    = trim((string) $request->query('q', ''));
-        $role = (string) $request->query('role', '');
+        $q     = trim((string) $request->query('q', ''));
+        $roles = Role::orderBy('name')->pluck('name');
+        $role  = (string) $request->query('role', '');
+        if (!$roles->contains($role)) {
+            $role = ''; // rol inexistente en la URL: se ignora en lugar de dar error
+        }
 
-        $users = User::with('roles:id,name')
-            ->when($q !== '', fn ($query) => $query->where(fn ($w) => $w
-                ->where('name', 'like', "%{$q}%")
-                ->orWhere('email', 'like', "%{$q}%")
-                ->orWhere('dni', 'like', "%{$q}%")))
+        // Búsqueda por nombre, email o DNI (la comparten el listado y los contadores)
+        $search = fn () => User::query()->when($q !== '', fn ($query) => $query->where(fn ($w) => $w
+            ->where('name', 'like', "%{$q}%")
+            ->orWhere('email', 'like', "%{$q}%")
+            ->orWhere('dni', 'like', "%{$q}%")));
+
+        $users = $search()
+            ->with('roles:id,name')
+            ->withCount('certificates')
             ->when($role !== '', fn ($query) => $query->role($role))
-            ->latest()
-            ->paginate(15)
+            ->orderBy('name')
+            ->paginate(20)
             ->withQueryString()   // mantiene ?q= y ?role= al cambiar de página
             ->through(fn (User $u) => [
-                'id'       => $u->id,
-                'name'     => $u->name,
-                'email'    => $u->email,
-                'dni'      => $u->dni,
-                'telefono' => $u->telefono,
-                'role'     => $u->roles->first()?->name,
+                'id'           => $u->id,
+                'name'         => $u->name,
+                'email'        => $u->email,
+                'dni'          => $u->dni,
+                'telefono'     => $u->telefono,
+                'role'         => $u->roles->first()?->name,
+                'certificates' => $u->certificates_count,
             ]);
+
+        // Contadores de los chips de rol, según la búsqueda actual
+        $counts = ['' => $search()->count()];
+        foreach ($roles as $r) {
+            $counts[$r] = $search()->role($r)->count();
+        }
 
         return Inertia::render('Admin/Users/Index', [
             'users'   => $users,
             'filters' => ['q' => $q, 'role' => $role],
-            'roles'   => Role::orderBy('name')->pluck('name'),
+            'roles'   => $roles,
+            'counts'  => $counts,
         ]);
     }
 
@@ -66,7 +81,6 @@ class AdminUserController extends Controller
         ]);
 
         $user->syncRoles([$data['role']]);
-        $this->syncTutorProfile($user);
 
         return redirect()->route('admin.users.index')->with('success', 'Usuario creado correctamente.');
     }
@@ -103,7 +117,6 @@ class AdminUserController extends Controller
             }
 
             $user->syncRoles([$data['role']]);
-            $this->syncTutorProfile($user);
         }
 
         return redirect()->route('admin.users.index')->with('success', 'Usuario actualizado.');
@@ -114,7 +127,6 @@ class AdminUserController extends Controller
         $request->validate(['role' => 'required|exists:roles,name']);
 
         $user->syncRoles([$request->role]);
-        $this->syncTutorProfile($user);
 
         return back()->with('success', 'Rol actualizado correctamente.');
     }
@@ -125,7 +137,9 @@ class AdminUserController extends Controller
             return back()->with('error', 'No podés eliminar tu propio usuario.');
         }
 
-        optional($user->tutor)->delete();
+        // Sus certificados NO se borran: quedan sin usuario (user_id NULL) y se siguen
+        // verificando por código o DNI con los datos guardados al emitirlos
+
         $user->delete();
 
         return redirect()->route('admin.users.index')->with('success', 'Usuario eliminado.');
@@ -160,18 +174,5 @@ class AdminUserController extends Controller
             // Obligatorio al crear; al editarse a sí mismo no se envía
             'role'     => [$user ? 'nullable' : 'required', 'exists:roles,name'],
         ];
-    }
-
-    /**
-     * El perfil Tutor existe solo si el usuario tiene rol tutor.
-     * Al quitarle el rol se borra el perfil (y con él su firma y sus cursos como tutor).
-     */
-    private function syncTutorProfile(User $user): void
-    {
-        if ($user->hasRole('tutor')) {
-            Tutor::firstOrCreate(['user_id' => $user->id], ['name' => $user->name]);
-        } elseif ($user->tutor) {
-            $user->tutor()->delete();
-        }
     }
 }

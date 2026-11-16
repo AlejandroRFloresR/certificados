@@ -15,12 +15,6 @@ export const CalendarIcon = (p) => (
     </svg>
 );
 
-export const ClockIcon = (p) => (
-    <svg {...base} {...p}>
-        <circle cx="12" cy="12" r="8.5" {...stroke} />
-        <path d="M12 7.5V12l3 2" {...stroke} />
-    </svg>
-);
 
 export const PinIcon = (p) => (
     <svg {...base} {...p}>
@@ -36,12 +30,6 @@ export const MonitorIcon = (p) => (
     </svg>
 );
 
-export const UserIcon = (p) => (
-    <svg {...base} {...p}>
-        <circle cx="12" cy="8.5" r="3.5" {...stroke} />
-        <path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5" {...stroke} />
-    </svg>
-);
 
 export const CheckIcon = (p) => (
     <svg {...base} {...p}>

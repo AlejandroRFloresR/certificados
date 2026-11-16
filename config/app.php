@@ -67,6 +67,12 @@ return [
     'proxy_ip' => env('PROXY_IP', '172.22.112.9'),
 
     /*
+    | Dirección para los links que salen del sistema (correos y QR de los certificados).
+    | Por defecto APP_URL (el dominio), aunque el admin esté entrando por la IP interna.
+    */
+    'public_url' => env('PUBLIC_URL', env('APP_URL')),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 import { STATUS, formatRange } from './utils';
-import { CalendarIcon, ClockIcon, CheckIcon, MonitorIcon, PinIcon } from './Icons';
+import { CalendarIcon, CheckIcon, MonitorIcon, PinIcon } from './Icons';
 
 export function StatusBadge({ status, onDark = false }) {
     const s = STATUS[status] ?? STATUS.sin_fecha;
@@ -47,13 +47,6 @@ export default function CourseCard({ course, modalities, onOpen }) {
                         <dt className="sr-only">Fechas</dt>
                         <dd className="tabular-nums">{formatRange(course.start_date, course.end_date)}</dd>
                     </div>
-                    {course.hours && (
-                        <div className="flex items-center gap-2">
-                            <ClockIcon className="h-4 w-4 shrink-0" />
-                            <dt className="sr-only">Carga horaria</dt>
-                            <dd className="tabular-nums">{course.hours} h</dd>
-                        </div>
-                    )}
                     {modality && (
                         <div className="flex items-center gap-2">
                             {course.modality === 'virtual'

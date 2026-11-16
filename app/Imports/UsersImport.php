@@ -40,7 +40,7 @@ class UsersImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFai
             '*.correo_electronico'    => ['required','email','max:255'],
             '*.dni'      => ['required','regex:/^\d{6,12}$/'],
             '*.telefono' => ['nullable','regex:/^[0-9+\s\-().]{6,12}$/'],
-            '*.role'     => ['nullable', Rule::in(['admin','tutor','user'])],
+            '*.role'     => ['nullable', Rule::in(['admin','user'])],
             // opcional: course_ids como "1|3|5"
             '*.course_ids' => ['nullable','string'],
             '*.password' => ['nullable','string','min:8'], // si no viene, generamos una

@@ -47,7 +47,7 @@ export default function Catalog({ courses = [], modalities = {} }) {
             if (category && c.category !== category) return false;
             if (modality && c.modality !== modality) return false;
             if (!q) return true;
-            return normalize([c.title, c.description, c.category, c.location, ...c.tutors].join(' ')).includes(q);
+            return normalize([c.title, c.description, c.category, c.location].join(' ')).includes(q);
         });
     }, [courses, query, category, modality]);
 
@@ -80,7 +80,7 @@ export default function Catalog({ courses = [], modalities = {} }) {
                         Cursos del hospital
                     </h1>
                     <p className="mx-auto mt-2 max-w-md text-sm text-white/80">
-                        Conocé la oferta de cursos y capacitaciones, con sus fechas, carga horaria y docentes.
+                        Conocé la oferta de cursos y capacitaciones, con sus fechas, carga horaria y modalidad.
                     </p>
 
                     <label className="mt-6 flex items-center gap-2 rounded-xl bg-white p-1.5 px-3 shadow-lg">
@@ -90,7 +90,7 @@ export default function Catalog({ courses = [], modalities = {} }) {
                             type="search"
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
-                            placeholder="Buscar por nombre, tema o docente"
+                            placeholder="Buscar por nombre o tema"
                             className="w-full border-0 p-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-0"
                         />
                     </label>

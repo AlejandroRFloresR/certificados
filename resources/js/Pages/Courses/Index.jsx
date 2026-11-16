@@ -1,158 +1,120 @@
 import { useMemo, useState } from 'react';
-import { Link, router, usePage } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import AppLayout from '@/Layouts/AppLayout';
 import Button from '@/Components/Button';
+import CourseMenu, { PublicBadge } from '@/Components/CourseMenu';
 import { StatusBadge } from '@/Components/Catalog/CourseCard';
 import { formatRange, normalize } from '@/Components/Catalog/utils';
 
-function PublicBadge({ isPublic }) {
-    return isPublic
-        ? <span className="rounded-full bg-hospitalbrown/15 px-2 py-0.5 text-xs font-semibold text-[#7a5a2b]">En catálogo</span>
-        : <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-hospitalgray">Oculto</span>;
-}
+const FILTERS = [
+    { id: 'todos',      label: 'Todos',       match: () => true },
+    { id: 'en_curso',   label: 'En curso',    match: (c) => c.status === 'en_curso' },
+    { id: 'proximos',   label: 'Próximos',    match: (c) => c.status === 'proximo' || c.status === 'sin_fecha' },
+    { id: 'finalizado', label: 'Finalizados', match: (c) => c.status === 'finalizado' },
+];
 
-function Actions({ course, isAdmin }) {
-    const [enrolling, setEnrolling] = useState(false);
-
-    const destroy = () => {
-        if (!confirm(`¿Eliminar el curso "${course.title}"? Esta acción no se puede deshacer.`)) return;
-        router.delete(route('admin.courses.destroy', course.id), { preserveScroll: true });
-    };
-
-    const enroll = () => {
-        router.post(route('courses.enroll', course.id), {}, {
-            preserveScroll: true,
-            onStart: () => setEnrolling(true),
-            onFinish: () => setEnrolling(false),
-        });
-    };
-
-    const linkClass = 'rounded-md px-2.5 py-1.5 text-sm font-semibold text-hospitalblue hover:bg-hospitalblue/10';
+function Progress({ course }) {
+    const pct = course.students ? Math.round((course.certificates / course.students) * 100) : 0;
+    const done = course.students > 0 && course.certificates >= course.students;
 
     return (
-        <div className="flex flex-wrap items-center justify-end gap-1">
-            {isAdmin && (
-                <>
-                    <Link href={route('admin.courses.edit', course.id)} className={linkClass}>Editar</Link>
-                    <Link href={route('admin.courses.users', course.id)} className={linkClass}>Alumnos</Link>
-                    <Link href={route('admin.courses.tutors.edit', course.id)} className={linkClass}>Tutores</Link>
-                    <button type="button" onClick={destroy}
-                            className="rounded-md px-2.5 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50">
-                        Eliminar
-                    </button>
-                </>
-            )}
-            {course.enrolled ? (
-                <span className="ml-1 rounded-full bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-700">Inscripto</span>
-            ) : (
-                <button type="button" onClick={enroll} disabled={enrolling}
-                        className="ml-1 rounded-md bg-green-600 px-2.5 py-1.5 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-60">
-                    {enrolling ? '…' : 'Inscribirme'}
-                </button>
-            )}
+        <div className="w-full sm:w-56">
+            <div className="flex justify-between text-sm text-hospitalgray">
+                <span><strong className="text-gray-900">{course.students}</strong> {course.students === 1 ? 'alumno' : 'alumnos'}</span>
+                <span><strong className="text-gray-900">{course.certificates}</strong> {course.certificates === 1 ? 'certificado' : 'certificados'}</span>
+            </div>
+            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-gray-100" aria-hidden="true">
+                <div className={`h-full ${done ? 'bg-green-600' : 'bg-hospitalblue'}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+            </div>
         </div>
     );
 }
 
 export default function Index({ courses }) {
-    const { auth } = usePage().props;
-    const isAdmin = auth.user.roles.includes('admin');
     const [query, setQuery] = useState('');
+    const [filter, setFilter] = useState('todos');
 
-    const visible = useMemo(() => {
+    const searched = useMemo(() => {
         const q = normalize(query.trim());
-        if (!q) return courses;
-        return courses.filter((c) => normalize([c.title, c.category, ...c.tutors].join(' ')).includes(q));
+        return q ? courses.filter((c) => normalize([c.title, c.category].join(' ')).includes(q)) : courses;
     }, [courses, query]);
+
+    const counts = useMemo(
+        () => Object.fromEntries(FILTERS.map((f) => [f.id, searched.filter(f.match).length])),
+        [searched]
+    );
+
+    const visible = searched.filter(FILTERS.find((f) => f.id === filter).match);
 
     return (
         <AppLayout
-            title="Listado de cursos"
-            actions={isAdmin && (
+            title="Cursos"
+            actions={
                 <Link href={route('admin.courses.create')}>
-                    <Button>+ Crear curso</Button>
+                    <Button type="button">+ Crear curso</Button>
                 </Link>
-            )}
+            }
         >
-            <div className="mb-4 flex items-center justify-between gap-3">
+            <p className="-mt-2 mb-5 text-sm text-hospitalgray">
+                Entrá a un curso para ver sus alumnos, emitir certificados y sincronizar con Moodle.
+            </p>
+
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <input
                     type="search"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Buscar por título, categoría o tutor"
+                    placeholder="Buscar por título o categoría"
                     aria-label="Buscar cursos"
-                    className="w-full max-w-sm rounded-lg border-gray-300 text-sm focus:border-hospitalblue focus:ring-hospitalblue"
+                    className="min-h-[44px] w-full max-w-sm rounded-lg border-gray-300 text-sm focus:border-hospitalblue focus:ring-hospitalblue"
                 />
-                <span className="shrink-0 text-xs text-hospitalgray">{visible.length} de {courses.length}</span>
+                <div role="group" aria-label="Filtrar por estado" className="flex flex-wrap gap-1.5">
+                    {FILTERS.map((f) => (
+                        <button
+                            key={f.id}
+                            type="button"
+                            aria-pressed={filter === f.id}
+                            onClick={() => setFilter(f.id)}
+                            className={`min-h-[36px] rounded-full border px-3.5 text-sm font-semibold ${
+                                filter === f.id
+                                    ? 'border-hospitalblue bg-hospitalblue text-white'
+                                    : 'border-gray-300 bg-white text-gray-800 hover:border-gray-400'
+                            }`}
+                        >
+                            {f.label} · {counts[f.id]}
+                        </button>
+                    ))}
+                </div>
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+            <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
                 {visible.length === 0 ? (
                     <p className="px-5 py-12 text-center text-sm text-hospitalgray">
-                        {courses.length === 0 ? 'No hay cursos cargados aún.' : 'Ningún curso coincide con la búsqueda.'}
+                        {courses.length === 0 ? 'No hay cursos cargados aún.' : 'Ningún curso coincide con la búsqueda o el filtro.'}
                     </p>
                 ) : (
-                    <>
-                        {/* Escritorio */}
-                        <table className="hidden w-full text-sm lg:table">
-                            <thead>
-                                <tr className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-hospitalgray">
-                                    <th className="px-5 py-2.5">Curso</th>
-                                    <th className="px-5 py-2.5">Tutores</th>
-                                    {isAdmin && <th className="px-5 py-2.5 text-right">Alumnos</th>}
-                                    <th className="px-5 py-2.5">Estado</th>
-                                    <th className="px-5 py-2.5 text-right">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {visible.map((c) => (
-                                    <tr key={c.id} className="align-top">
-                                        <td className="px-5 py-3">
-                                            <p className="font-medium text-gray-900">{c.title}</p>
-                                            <p className="mt-0.5 text-xs tabular-nums text-hospitalgray">
-                                                {c.category && `${c.category} · `}
-                                                {formatRange(c.start_date, c.end_date)}
-                                                {c.hours && ` · ${c.hours} h`}
-                                            </p>
-                                        </td>
-                                        <td className="px-5 py-3 text-xs text-gray-700">
-                                            {c.tutors.length ? c.tutors.join(', ') : <span className="text-gray-400">Sin tutores</span>}
-                                        </td>
-                                        {isAdmin && <td className="px-5 py-3 text-right tabular-nums">{c.students}</td>}
-                                        <td className="px-5 py-3">
-                                            <div className="flex flex-wrap gap-1">
-                                                <StatusBadge status={c.status} />
-                                                {isAdmin && <PublicBadge isPublic={c.is_public} />}
-                                            </div>
-                                        </td>
-                                        <td className="px-5 py-3"><Actions course={c} isAdmin={isAdmin} /></td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-
-                        {/* Móvil y tablet */}
-                        <div className="divide-y divide-gray-100 lg:hidden">
-                            {visible.map((c) => (
-                                <div key={c.id} className="p-4">
-                                    <div className="flex items-start justify-between gap-2">
-                                        <p className="text-sm font-medium text-gray-900">{c.title}</p>
-                                        <StatusBadge status={c.status} />
+                    <ul className="divide-y divide-gray-100">
+                        {visible.map((c) => (
+                            <li key={c.id} className="flex items-center gap-2 pr-3 hover:bg-gray-50">
+                                {/* Toda la fila abre la ficha del curso */}
+                                <Link href={route('admin.courses.users', c.id)}
+                                      className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-4 py-4 pl-5 pr-2">
+                                    <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="font-semibold text-gray-900">{c.title}</span>
+                                            <StatusBadge status={c.status} />
+                                            <PublicBadge isPublic={c.is_public} />
+                                        </div>
+                                        <p className="mt-1 text-sm tabular-nums text-hospitalgray">
+                                            {[c.category, formatRange(c.start_date, c.end_date)].filter(Boolean).join(' · ')}
+                                        </p>
                                     </div>
-                                    <p className="mt-0.5 text-xs tabular-nums text-hospitalgray">
-                                        {formatRange(c.start_date, c.end_date)}
-                                        {c.hours && ` · ${c.hours} h`}
-                                    </p>
-                                    <p className="mt-1 text-xs text-gray-600">
-                                        {c.tutors.length ? `Tutores: ${c.tutors.join(', ')}` : 'Sin tutores'}
-                                        {isAdmin && ` · ${c.students} alumnos`}
-                                    </p>
-                                    {isAdmin && <div className="mt-2"><PublicBadge isPublic={c.is_public} /></div>}
-                                    <div className="mt-3 -mr-2.5"><Actions course={c} isAdmin={isAdmin} /></div>
-                                </div>
-                            ))}
-                        </div>
-                    </>
+                                    <Progress course={c} />
+                                </Link>
+                                <CourseMenu course={c} />
+                            </li>
+                        ))}
+                    </ul>
                 )}
             </div>
         </AppLayout>
