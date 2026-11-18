@@ -44,7 +44,7 @@ export default function SignerPicker({ id, label, signers, value, onChange, max 
                         <li key={s.id}
                             className={`flex items-center gap-3 rounded-xl border p-3 ${checked ? 'border-2 border-hospitalblue bg-hospitalblue/5 p-[11px]' : 'border-gray-300 bg-white'} ${disabled ? 'opacity-50' : ''}`}>
                             <input id={`${id}-${s.id}`} type="checkbox" checked={checked} disabled={disabled} onChange={() => toggle(s.id)}
-                                   className="h-[18px] w-[18px] shrink-0 rounded border-gray-400 text-hospitalblue focus:ring-4 focus:ring-hospitalblue/20" />
+                                   className="h-[18px] w-[18px] shrink-0 rounded border-2 border-hospitalgray text-hospitalblue focus:ring-4 focus:ring-hospitalblue/20" />
                             <label htmlFor={`${id}-${s.id}`} className={`flex min-w-0 flex-1 items-center gap-3 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                                 <span className="flex h-12 w-28 shrink-0 items-center justify-center rounded-lg border border-gray-100 bg-white p-1">
                                     <img src={s.signature_url} alt="" className="max-h-full max-w-full object-contain" />

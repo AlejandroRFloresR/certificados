@@ -165,7 +165,7 @@ export default function Students({ course, students, types }) {
                                         {visiblePending.length > 0 && (
                                             <input type="checkbox" checked={allVisibleSelected} onChange={toggleAllVisible}
                                                    aria-label="Seleccionar todos los pendientes visibles"
-                                                   className="h-[18px] w-[18px] rounded border-gray-300 text-hospitalblue focus:ring-hospitalblue" />
+                                                   className="h-[18px] w-[18px] rounded border-2 border-hospitalgray text-hospitalblue focus:ring-hospitalblue" />
                                         )}
                                     </th>
                                     <th scope="col" className="px-3 py-2.5">Alumno</th>
@@ -183,7 +183,7 @@ export default function Students({ course, students, types }) {
                                                 {!s.certificate && (
                                                     <input type="checkbox" checked={checked} onChange={() => toggle(s.id)}
                                                            aria-label={`Seleccionar a ${s.name}`}
-                                                           className="h-[18px] w-[18px] rounded border-gray-300 text-hospitalblue focus:ring-hospitalblue" />
+                                                           className="h-[18px] w-[18px] rounded border-2 border-hospitalgray text-hospitalblue focus:ring-hospitalblue" />
                                                 )}
                                             </td>
                                             <td className="px-3 py-3">

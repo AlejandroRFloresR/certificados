@@ -210,7 +210,7 @@ function Preview({ course, preview }) {
                                         {canIssue && (
                                             <input type="checkbox" checked={selected.has(r.user_id)} onChange={() => toggle(r.user_id)}
                                                    aria-label={`Emitir a ${r.name}`}
-                                                   className="rounded border-gray-300 text-hospitalblue focus:ring-hospitalblue" />
+                                                   className="h-[18px] w-[18px] rounded border-2 border-hospitalgray text-hospitalblue focus:ring-hospitalblue" />
                                         )}
                                     </td>
                                     <td className="px-4 py-2.5 tabular-nums">{r.row}</td>

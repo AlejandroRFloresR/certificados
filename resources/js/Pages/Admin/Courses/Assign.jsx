@@ -110,7 +110,7 @@ export default function Assign({ mode, course, items, selected: initialSelected,
                                                 <input type="checkbox" checked={checked} disabled={disabled}
                                                        onChange={() => toggle(item.id)} onClick={(e) => e.stopPropagation()}
                                                        aria-label={`Seleccionar ${item.name}`}
-                                                       className="rounded border-gray-300 text-hospitalblue focus:ring-hospitalblue" />
+                                                       className="h-[18px] w-[18px] rounded border-2 border-hospitalgray text-hospitalblue focus:ring-hospitalblue" />
                                             </td>
                                             {cfg.columns.map(([key]) => (
                                                 <td key={key} className={`px-5 py-3 ${key === 'name' ? 'font-medium text-gray-900' : 'text-gray-600'}`}>
