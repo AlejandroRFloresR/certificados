@@ -4,6 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title inertia>{{ config('app.name') }}</title>
+    {{-- Ícono de la pestaña y del acceso directo en celulares (storage/app/public/images, igual que los logos) --}}
+    <link rel="icon" type="image/png" href="{{ asset('storage/images/favicon_color.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('storage/images/favicon_color.png') }}">
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet" />
 
